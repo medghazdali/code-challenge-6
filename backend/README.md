@@ -578,6 +578,23 @@ backend/
 - `AWS_ACCESS_KEY_ID`: AWS access key (for local development)
 - `AWS_SECRET_ACCESS_KEY`: AWS secret key (for local development)
 
+## Lambda Packaging Optimization
+
+The project includes optimized Lambda packaging to reduce deployment size and costs:
+
+- **Excludes dev dependencies**: Jest, Serverless Framework, serverless-offline, and other dev tools
+- **Excludes test files**: All test files and test directories
+- **Excludes scripts**: Deployment and utility scripts not needed in Lambda runtime
+- **Excludes documentation**: README, Swagger files, and other docs
+- **Excludes build artifacts**: Coverage reports, logs, and temporary files
+
+This reduces the deployment package size significantly, resulting in:
+- Faster deployments
+- Lower storage costs
+- Reduced cold start times
+
+The packaging configuration is in `serverless.yml` under the `package` section.
+
 ## Testing
 
 Run tests:

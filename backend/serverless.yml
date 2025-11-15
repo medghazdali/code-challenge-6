@@ -65,6 +65,48 @@ provider:
                 - CognitoUserPool
                 - Arn
 
+# Lambda Packaging Optimization
+# Excludes unnecessary files to reduce deployment package size
+package:
+  patterns:
+    # Include only necessary files
+    - 'handlers/**'
+    - 'lib/**'
+    - 'node_modules/**'
+    # Exclude dev dependencies (they're not needed in Lambda runtime)
+    - '!node_modules/jest/**'
+    - '!node_modules/@types/**'
+    - '!node_modules/serverless/**'
+    - '!node_modules/serverless-offline/**'
+    - '!node_modules/serverless-aws-documentation/**'
+    # Exclude test files
+    - '!tests/**'
+    - '!**/*.test.js'
+    - '!**/*.spec.js'
+    - '!**/__tests__/**'
+    # Exclude scripts (not needed in Lambda)
+    - '!scripts/**'
+    # Exclude documentation
+    - '!swagger/**'
+    - '!*.md'
+    - '!DEPLOY_INSTRUCTIONS.md'
+    - '!IMPLEMENTATION_CHECKLIST.md'
+    # Exclude config files
+    - '!.env*'
+    - '!.git/**'
+    - '!.vscode/**'
+    - '!.idea/**'
+    # Exclude build artifacts
+    - '!.serverless/**'
+    - '!coverage/**'
+    - '!.nyc_output/**'
+    # Exclude OS files
+    - '!.DS_Store'
+    - '!Thumbs.db'
+    # Exclude logs
+    - '!*.log'
+    - '!logs/**'
+
 custom:
   tasksTable: tasks-${self:provider.stage}
   projectsTable: projects-${self:provider.stage}
