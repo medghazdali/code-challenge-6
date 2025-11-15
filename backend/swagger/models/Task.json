@@ -6,6 +6,16 @@
       "description": "Unique task identifier (UUID)",
       "example": "550e8400-e29b-41d4-a716-446655440000"
     },
+    "projectId": {
+      "type": "string",
+      "description": "Project ID this task belongs to",
+      "example": "550e8400-e29b-41d4-a716-446655440001"
+    },
+    "userId": {
+      "type": "string",
+      "description": "User ID who owns this task",
+      "example": "cognito-user-id-123"
+    },
     "title": {
       "type": "string",
       "description": "Task title",
@@ -35,6 +45,6 @@
       "example": "2024-01-15T10:30:00.000Z"
     }
   },
-  "required": ["id", "title", "description", "status", "createdAt", "updatedAt"]
+  "required": ["id", "projectId", "userId", "title", "description", "status", "createdAt", "updatedAt"]
 }
 

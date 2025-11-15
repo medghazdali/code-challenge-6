@@ -1,9 +1,35 @@
 const { v4: uuidv4 } = require('uuid');
-const { createTask } = require('../lib/dynamodb');
+const { createTask, getProjectById } = require('../lib/dynamodb');
+const { requireAuth } = require('../lib/auth');
 const { success, badRequest, error } = require('../lib/response');
 
 exports.handler = async (event) => {
   try {
+    // Require authentication
+    const userId = requireAuth(event);
+
+    // Extract projectId from path parameters
+    const projectId = event.pathParameters?.projectId;
+
+    if (!projectId) {
+      return badRequest('Project ID is required in path parameters');
+    }
+
+    // Validate UUID format
+    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+    if (!uuidRegex.test(projectId)) {
+      return badRequest('Invalid project ID format');
+    }
+
+    // Verify project exists and user owns it
+    const project = await getProjectById(projectId);
+    if (!project) {
+      return badRequest('Project not found');
+    }
+    if (project.userId !== userId) {
+      return badRequest('Project not found');
+    }
+
     // Parse request body
     let body;
     try {
@@ -34,6 +60,8 @@ exports.handler = async (event) => {
     // Create task object
     const taskData = {
       id: taskId,
+      projectId: projectId,
+      userId: userId,
       title: title.trim(),
       description: description.trim(),
       status: status || 'pending',
@@ -47,6 +75,9 @@ exports.handler = async (event) => {
     return success(createdTask, 201);
   } catch (err) {
     console.error('Error in createTask handler:', err);
+    if (err.message === 'Unauthorized: Authentication required') {
+      return error('Unauthorized: Authentication required', 401);
+    }
     return error('Internal server error', 500);
   }
 };

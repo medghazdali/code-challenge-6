@@ -1,8 +1,12 @@
 const { updateTask, getTaskById } = require('../lib/dynamodb');
+const { requireAuth } = require('../lib/auth');
 const { success, notFound, badRequest, error } = require('../lib/response');
 
 exports.handler = async (event) => {
   try {
+    // Require authentication
+    const userId = requireAuth(event);
+
     // Extract task ID from path parameters
     const taskId = event.pathParameters?.id;
 
@@ -24,9 +28,13 @@ exports.handler = async (event) => {
       return badRequest('Invalid JSON in request body');
     }
 
-    // Check if task exists
+    // Check if task exists and user owns it
     const existingTask = await getTaskById(taskId);
     if (!existingTask) {
+      return notFound('Task not found');
+    }
+
+    if (existingTask.userId !== userId) {
       return notFound('Task not found');
     }
 
@@ -70,6 +78,9 @@ exports.handler = async (event) => {
     return success(updatedTask);
   } catch (err) {
     console.error('Error in updateTask handler:', err);
+    if (err.message === 'Unauthorized: Authentication required') {
+      return error('Unauthorized: Authentication required', 401);
+    }
     return error('Internal server error', 500);
   }
 };

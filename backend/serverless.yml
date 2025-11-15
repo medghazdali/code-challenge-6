@@ -12,6 +12,9 @@ provider:
   environment:
     STAGE: ${self:provider.stage}
     TASKS_TABLE: ${self:custom.tasksTable}
+    PROJECTS_TABLE: ${self:custom.projectsTable}
+    COGNITO_USER_POOL_ID: { Ref: CognitoUserPool }
+    COGNITO_CLIENT_ID: { Ref: CognitoUserPoolClient }
     AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID, ''}
     AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY, ''}
     AWS_REGION: ${env:AWS_REGION, 'us-east-1'}
@@ -30,15 +33,36 @@ provider:
             - Fn::GetAtt:
                 - TasksTable
                 - Arn
+            - Fn::GetAtt:
+                - ProjectsTable
+                - Arn
             - Fn::Join:
                 - ''
                 - - Fn::GetAtt:
                       - TasksTable
                       - Arn
                   - '/index/*'
+            - Fn::Join:
+                - ''
+                - - Fn::GetAtt:
+                      - ProjectsTable
+                      - Arn
+                  - '/index/*'
+        - Effect: Allow
+          Action:
+            - cognito-idp:AdminCreateUser
+            - cognito-idp:AdminDeleteUser
+            - cognito-idp:AdminGetUser
+            - cognito-idp:AdminUpdateUserAttributes
+            - cognito-idp:ListUsers
+          Resource:
+            - Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
 
 custom:
   tasksTable: tasks-${self:provider.stage}
+  projectsTable: projects-${self:provider.stage}
   serverless-offline:
     httpPort: 3000
     lambdaPort: 3002
@@ -50,8 +74,51 @@ custom:
   documentation:
     version: '1.0.0'
     title: 'Project Task Management API'
-    description: 'REST API for managing projects and tasks with full CRUD operations'
+    description: 'REST API for managing projects and tasks with full CRUD operations. All endpoints except authentication require Cognito JWT token.'
     models:
+      # Authentication Models
+      - name: SignupInput
+        description: 'User signup input'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/SignupInput.json)}
+      - name: SignupResponse
+        description: 'User signup response'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/SignupResponse.json)}
+      - name: LoginInput
+        description: 'User login input'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/LoginInput.json)}
+      - name: LoginResponse
+        description: 'User login response with tokens'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/LoginResponse.json)}
+      - name: ConfirmInput
+        description: 'Email confirmation input'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/ConfirmInput.json)}
+      - name: RefreshInput
+        description: 'Token refresh input'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/RefreshInput.json)}
+      - name: RefreshResponse
+        description: 'Token refresh response'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/RefreshResponse.json)}
+      # Project Models
+      - name: Project
+        description: 'Project object'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/Project.json)}
+      - name: ProjectInput
+        description: 'Project input for creation/update'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/ProjectInput.json)}
+      - name: ProjectList
+        description: 'List of projects with pagination'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/ProjectList.json)}
+      # Task Models
       - name: Task
         description: 'Task object'
         contentType: 'application/json'
@@ -64,6 +131,7 @@ custom:
         description: 'List of tasks with pagination'
         contentType: 'application/json'
         schema: ${file(swagger/models/TaskList.json)}
+      # Error Model
       - name: Error
         description: 'Error response'
         contentType: 'application/json'
@@ -74,16 +142,339 @@ plugins:
   - serverless-aws-documentation
 
 functions:
+  # ========== AUTHENTICATION ENDPOINTS (Public) ==========
+  signup:
+    handler: handlers/auth/signup.handler
+    events:
+      - http:
+          path: auth/signup
+          method: post
+          cors: true
+          documentation:
+            summary: Sign up a new user
+            description: Creates a new user account. User will receive a confirmation code via email.
+            requestBody:
+              description: User signup data
+            requestModels:
+              'application/json': SignupInput
+            methodResponses:
+              - statusCode: 201
+                responseBody:
+                  description: User registered successfully
+                responseModels:
+                  'application/json': SignupResponse
+              - statusCode: 400
+                responseBody:
+                  description: Bad request - validation error
+                responseModels:
+                  'application/json': Error
+
+  login:
+    handler: handlers/auth/login.handler
+    events:
+      - http:
+          path: auth/login
+          method: post
+          cors: true
+          documentation:
+            summary: Login user
+            description: Authenticates a user and returns access tokens
+            requestBody:
+              description: User login credentials
+            requestModels:
+              'application/json': LoginInput
+            methodResponses:
+              - statusCode: 200
+                responseBody:
+                  description: Login successful
+                responseModels:
+                  'application/json': LoginResponse
+              - statusCode: 400
+                responseBody:
+                  description: Invalid credentials
+                responseModels:
+                  'application/json': Error
+
+  confirmSignup:
+    handler: handlers/auth/confirmSignup.handler
+    events:
+      - http:
+          path: auth/confirm
+          method: post
+          cors: true
+          documentation:
+            summary: Confirm user signup
+            description: Confirms a user's email address using the confirmation code
+            requestBody:
+              description: Email and confirmation code
+            requestModels:
+              'application/json': ConfirmInput
+            methodResponses:
+              - statusCode: 200
+                responseBody:
+                  description: User confirmed successfully
+              - statusCode: 400
+                responseBody:
+                  description: Invalid confirmation code
+                responseModels:
+                  'application/json': Error
+
+  refreshToken:
+    handler: handlers/auth/refreshToken.handler
+    events:
+      - http:
+          path: auth/refresh
+          method: post
+          cors: true
+          documentation:
+            summary: Refresh access token
+            description: Refreshes the access token using a refresh token
+            requestBody:
+              description: Refresh token
+            requestModels:
+              'application/json': RefreshInput
+            methodResponses:
+              - statusCode: 200
+                responseBody:
+                  description: Token refreshed successfully
+                responseModels:
+                  'application/json': RefreshResponse
+              - statusCode: 400
+                responseBody:
+                  description: Invalid refresh token
+                responseModels:
+                  'application/json': Error
+
+  # ========== PROJECTS ENDPOINTS (Protected) ==========
+  createProject:
+    handler: handlers/projects/createProject.handler
+    events:
+      - http:
+          path: projects
+          method: post
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
+          documentation:
+            summary: Create a new project
+            description: Creates a new project for the authenticated user
+            requestBody:
+              description: Project data to create
+            requestModels:
+              'application/json': ProjectInput
+            methodResponses:
+              - statusCode: 201
+                responseBody:
+                  description: Project created successfully
+                responseModels:
+                  'application/json': Project
+              - statusCode: 400
+                responseBody:
+                  description: Bad request - validation error
+                responseModels:
+                  'application/json': Error
+              - statusCode: 401
+                responseBody:
+                  description: Unauthorized
+                responseModels:
+                  'application/json': Error
+
+  getProject:
+    handler: handlers/projects/getProject.handler
+    events:
+      - http:
+          path: projects/{id}
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
+          documentation:
+            summary: Get a project by ID
+            description: Retrieves a single project by its unique identifier (must belong to authenticated user)
+            pathParams:
+              - name: id
+                description: Project unique identifier (UUID)
+                schema:
+                  type: string
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+            methodResponses:
+              - statusCode: 200
+                responseBody:
+                  description: Project found
+                responseModels:
+                  'application/json': Project
+              - statusCode: 401
+                responseBody:
+                  description: Unauthorized
+                responseModels:
+                  'application/json': Error
+              - statusCode: 404
+                responseBody:
+                  description: Project not found
+                responseModels:
+                  'application/json': Error
+
+  listProjects:
+    handler: handlers/projects/listProjects.handler
+    events:
+      - http:
+          path: projects
+          method: get
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
+          documentation:
+            summary: List user's projects
+            description: Retrieves all projects belonging to the authenticated user
+            queryParams:
+              - name: limit
+                description: Maximum number of items to return (1-1000)
+                schema:
+                  type: integer
+                  minimum: 1
+                  maximum: 1000
+                  default: 100
+              - name: lastEvaluatedKey
+                description: Pagination token from previous response (URL encoded JSON)
+                schema:
+                  type: string
+            methodResponses:
+              - statusCode: 200
+                responseBody:
+                  description: List of projects
+                responseModels:
+                  'application/json': ProjectList
+              - statusCode: 401
+                responseBody:
+                  description: Unauthorized
+                responseModels:
+                  'application/json': Error
+              - statusCode: 500
+                responseBody:
+                  description: Internal server error
+                responseModels:
+                  'application/json': Error
+
+  updateProject:
+    handler: handlers/projects/updateProject.handler
+    events:
+      - http:
+          path: projects/{id}
+          method: put
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
+          documentation:
+            summary: Update a project
+            description: Updates an existing project (must belong to authenticated user)
+            pathParams:
+              - name: id
+                description: Project unique identifier (UUID)
+                schema:
+                  type: string
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+            requestBody:
+              description: Project update data (all fields optional)
+            requestModels:
+              'application/json': ProjectInput
+            methodResponses:
+              - statusCode: 200
+                responseBody:
+                  description: Project updated successfully
+                responseModels:
+                  'application/json': Project
+              - statusCode: 400
+                responseBody:
+                  description: Bad request - validation error
+                responseModels:
+                  'application/json': Error
+              - statusCode: 401
+                responseBody:
+                  description: Unauthorized
+                responseModels:
+                  'application/json': Error
+              - statusCode: 404
+                responseBody:
+                  description: Project not found
+                responseModels:
+                  'application/json': Error
+
+  deleteProject:
+    handler: handlers/projects/deleteProject.handler
+    events:
+      - http:
+          path: projects/{id}
+          method: delete
+          cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
+          documentation:
+            summary: Delete a project
+            description: Deletes a project by its unique identifier (must belong to authenticated user)
+            pathParams:
+              - name: id
+                description: Project unique identifier (UUID)
+                schema:
+                  type: string
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+            methodResponses:
+              - statusCode: 204
+                responseBody:
+                  description: Project deleted successfully (no content)
+              - statusCode: 401
+                responseBody:
+                  description: Unauthorized
+                responseModels:
+                  'application/json': Error
+              - statusCode: 404
+                responseBody:
+                  description: Project not found
+                responseModels:
+                  'application/json': Error
+
+  # ========== TASKS ENDPOINTS (Protected) ==========
   createTask:
     handler: handlers/createTask.handler
     events:
       - http:
-          path: tasks
+          path: projects/{projectId}/tasks
           method: post
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
           documentation:
             summary: Create a new task
-            description: Creates a new task with the provided information. Returns the created task with generated ID and timestamps.
+            description: Creates a new task in the specified project (must belong to authenticated user). Returns the created task with generated ID and timestamps.
+            pathParams:
+              - name: projectId
+                description: Project unique identifier (UUID)
+                schema:
+                  type: string
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
             requestBody:
               description: Task data to create
             requestModels:
@@ -99,6 +490,11 @@ functions:
                   description: Bad request - validation error
                 responseModels:
                   'application/json': Error
+              - statusCode: 401
+                responseBody:
+                  description: Unauthorized
+                responseModels:
+                  'application/json': Error
               - statusCode: 500
                 responseBody:
                   description: Internal server error
@@ -112,9 +508,15 @@ functions:
           path: tasks/{id}
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
           documentation:
             summary: Get a task by ID
-            description: Retrieves a single task by its unique identifier
+            description: Retrieves a single task by its unique identifier (must belong to authenticated user)
             pathParams:
               - name: id
                 description: Task unique identifier (UUID)
@@ -132,6 +534,11 @@ functions:
                   description: Invalid task ID format
                 responseModels:
                   'application/json': Error
+              - statusCode: 401
+                responseBody:
+                  description: Unauthorized
+                responseModels:
+                  'application/json': Error
               - statusCode: 404
                 responseBody:
                   description: Task not found
@@ -147,12 +554,24 @@ functions:
     handler: handlers/listTasks.handler
     events:
       - http:
-          path: tasks
+          path: projects/{projectId}/tasks
           method: get
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
           documentation:
-            summary: List all tasks
-            description: Retrieves a list of all tasks with optional pagination support
+            summary: List tasks in a project
+            description: Retrieves all tasks belonging to a specific project (must belong to authenticated user) with optional pagination support
+            pathParams:
+              - name: projectId
+                description: Project unique identifier (UUID)
+                schema:
+                  type: string
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
             queryParams:
               - name: limit
                 description: Maximum number of items to return (1-1000)
@@ -176,6 +595,11 @@ functions:
                   description: Invalid query parameters
                 responseModels:
                   'application/json': Error
+              - statusCode: 401
+                responseBody:
+                  description: Unauthorized
+                responseModels:
+                  'application/json': Error
               - statusCode: 500
                 responseBody:
                   description: Internal server error
@@ -189,9 +613,15 @@ functions:
           path: tasks/{id}
           method: put
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
           documentation:
             summary: Update a task
-            description: Updates an existing task. All fields are optional - only provided fields will be updated.
+            description: Updates an existing task (must belong to authenticated user). All fields are optional - only provided fields will be updated.
             pathParams:
               - name: id
                 description: Task unique identifier (UUID)
@@ -213,6 +643,11 @@ functions:
                   description: Bad request - validation error
                 responseModels:
                   'application/json': Error
+              - statusCode: 401
+                responseBody:
+                  description: Unauthorized
+                responseModels:
+                  'application/json': Error
               - statusCode: 404
                 responseBody:
                   description: Task not found
@@ -231,9 +666,15 @@ functions:
           path: tasks/{id}
           method: delete
           cors: true
+          authorizer:
+            type: COGNITO_USER_POOLS
+            arn:
+              Fn::GetAtt:
+                - CognitoUserPool
+                - Arn
           documentation:
             summary: Delete a task
-            description: Deletes a task by its unique identifier. Returns 204 No Content on success.
+            description: Deletes a task by its unique identifier (must belong to authenticated user). Returns 204 No Content on success.
             pathParams:
               - name: id
                 description: Task unique identifier (UUID)
@@ -249,6 +690,11 @@ functions:
                   description: Invalid task ID format
                 responseModels:
                   'application/json': Error
+              - statusCode: 401
+                responseBody:
+                  description: Unauthorized
+                responseModels:
+                  'application/json': Error
               - statusCode: 404
                 responseBody:
                   description: Task not found
@@ -262,6 +708,63 @@ functions:
 
 resources:
   Resources:
+    # Cognito User Pool
+    CognitoUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:service}-${self:provider.stage}
+        AutoVerifiedAttributes:
+          - email
+        UsernameAttributes:
+          - email
+        Schema:
+          - Name: email
+            Required: true
+            Mutable: true
+          - Name: name
+            Required: true
+            Mutable: true
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireUppercase: false
+            RequireLowercase: false
+            RequireNumbers: false
+            RequireSymbols: false
+
+    CognitoUserPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        UserPoolId: { Ref: CognitoUserPool }
+        ClientName: ${self:service}-${self:provider.stage}-client
+        GenerateSecret: false
+        ExplicitAuthFlows:
+          - USER_PASSWORD_AUTH
+          - REFRESH_TOKEN_AUTH
+
+    # Projects Table
+    ProjectsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.projectsTable}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: userId-index
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+
+    # Tasks Table (updated with userId and projectId)
     TasksTable:
       Type: AWS::DynamoDB::Table
       Properties:
@@ -269,10 +772,27 @@ resources:
         AttributeDefinitions:
           - AttributeName: id
             AttributeType: S
+          - AttributeName: projectId
+            AttributeType: S
+          - AttributeName: userId
+            AttributeType: S
         KeySchema:
           - AttributeName: id
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
+        GlobalSecondaryIndexes:
+          - IndexName: projectId-index
+            KeySchema:
+              - AttributeName: projectId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: userId-index
+            KeySchema:
+              - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
         StreamSpecification:
           StreamViewType: NEW_AND_OLD_IMAGES
 

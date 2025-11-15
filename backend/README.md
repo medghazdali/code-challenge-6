@@ -1,6 +1,6 @@
 # Project Task Management API - Backend
 
-A serverless REST API built with Serverless Framework, AWS Lambda, API Gateway, and DynamoDB for managing projects and tasks.
+A serverless REST API built with Serverless Framework, AWS Lambda, API Gateway, DynamoDB, and AWS Cognito for managing projects and tasks. Features full user authentication and user-specific data isolation.
 
 ## Architecture Overview
 
@@ -34,14 +34,18 @@ A serverless REST API built with Serverless Framework, AWS Lambda, API Gateway, 
 
 ## Features
 
-- ✅ Full CRUD operations for tasks
-- ✅ Input validation and error handling
-- ✅ CORS enabled for frontend integration
-- ✅ Multi-stage deployment (dev/prod)
-- ✅ Local development support with serverless-offline
-- ✅ CI/CD pipeline with GitHub Actions
-- ✅ Automated infrastructure as code
-- ✅ OpenAPI/Swagger documentation
+- ✅ **AWS Cognito Authentication** - User signup, login, and token management
+- ✅ **Projects Management** - Full CRUD operations for user projects
+- ✅ **Tasks Management** - Full CRUD operations for tasks within projects
+- ✅ **User Data Isolation** - Users can only access their own projects and tasks
+- ✅ **Protected Routes** - All endpoints require authentication except signup/login
+- ✅ **Input validation and error handling**
+- ✅ **CORS enabled** for frontend integration
+- ✅ **Multi-stage deployment** (dev/prod)
+- ✅ **Local development support** with serverless-offline
+- ✅ **CI/CD pipeline** with GitHub Actions
+- ✅ **Automated infrastructure as code**
+- ✅ **OpenAPI/Swagger documentation**
 
 ## Prerequisites
 
@@ -118,6 +122,157 @@ If you see "Missing credentials" errors:
 ## API Endpoints
 
 Base URL (after deployment): `https://{api-id}.execute-api.{region}.amazonaws.com/{stage}`
+
+**Note**: All endpoints except authentication require a valid Cognito JWT token in the `Authorization` header:
+```
+Authorization: Bearer <access-token>
+```
+
+### Authentication Endpoints (Public)
+
+#### Sign Up
+**POST** `/auth/signup`
+
+Request Body:
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123",
+  "name": "John Doe"
+}
+```
+
+Response (201 Created):
+```json
+{
+  "message": "User registered successfully. Please check your email for confirmation code.",
+  "userSub": "uuid",
+  "codeDeliveryDetails": { ... }
+}
+```
+
+#### Login
+**POST** `/auth/login`
+
+Request Body:
+```json
+{
+  "email": "user@example.com",
+  "password": "SecurePass123"
+}
+```
+
+Response (200 OK):
+```json
+{
+  "accessToken": "eyJraWQ...",
+  "idToken": "eyJraWQ...",
+  "refreshToken": "eyJjdHk...",
+  "expiresIn": 3600
+}
+```
+
+#### Confirm Signup
+**POST** `/auth/confirm`
+
+Request Body:
+```json
+{
+  "email": "user@example.com",
+  "confirmationCode": "123456"
+}
+```
+
+#### Refresh Token
+**POST** `/auth/refresh`
+
+Request Body:
+```json
+{
+  "refreshToken": "eyJjdHk..."
+}
+```
+
+### Projects Endpoints (Protected - Requires Authentication)
+
+#### Create Project
+**POST** `/projects`
+
+Request Body:
+```json
+{
+  "name": "My Project",
+  "description": "Project description"
+}
+```
+
+Response (201 Created):
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "userId": "cognito-user-id",
+  "name": "My Project",
+  "description": "Project description",
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "updatedAt": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### Get Project
+**GET** `/projects/{id}`
+
+#### List Projects
+**GET** `/projects?limit=10&lastEvaluatedKey={key}`
+
+Returns only projects belonging to the authenticated user.
+
+#### Update Project
+**PUT** `/projects/{id}`
+
+#### Delete Project
+**DELETE** `/projects/{id}`
+
+### Tasks Endpoints (Protected - Requires Authentication)
+
+#### Create Task
+**POST** `/projects/{projectId}/tasks`
+
+Request Body:
+```json
+{
+  "title": "Complete project documentation",
+  "description": "Write comprehensive README and API docs",
+  "status": "pending"
+}
+```
+
+Response (201 Created):
+```json
+{
+  "id": "550e8400-e29b-41d4-a716-446655440000",
+  "projectId": "project-uuid",
+  "userId": "cognito-user-id",
+  "title": "Complete project documentation",
+  "description": "Write comprehensive README and API docs",
+  "status": "pending",
+  "createdAt": "2024-01-15T10:30:00.000Z",
+  "updatedAt": "2024-01-15T10:30:00.000Z"
+}
+```
+
+#### Get Task
+**GET** `/tasks/{id}`
+
+#### List Tasks
+**GET** `/projects/{projectId}/tasks?limit=10&lastEvaluatedKey={key}`
+
+Returns only tasks belonging to the specified project (which must belong to the authenticated user).
+
+#### Update Task
+**PUT** `/tasks/{id}`
+
+#### Delete Task
+**DELETE** `/tasks/{id}`
 
 ### Create Task
 
@@ -233,7 +388,26 @@ The documentation includes:
 - Error responses
 - Query parameters and path parameters
 
-## Task Status Values
+## Business Case: Project Task Management System
+
+This API implements a **Project Task Management System** where:
+
+- **Users** authenticate via AWS Cognito
+- **Users** create and manage their own **Projects**
+- Each **Project** contains multiple **Tasks**
+- **Tasks** have status workflow: `pending` → `in-progress` → `completed`
+- All data is **user-specific** - users can only access their own projects and tasks
+- **Authentication required** for all operations except signup/login
+
+### Data Model
+
+```
+Users (Cognito)
+  └── Projects (user owns)
+      └── Tasks (belong to project)
+```
+
+### Task Status Values
 
 - `pending`: Task is not yet started
 - `in-progress`: Task is currently being worked on
@@ -331,6 +505,9 @@ backend/
 
 - `STAGE`: Deployment stage (dev, prod)
 - `TASKS_TABLE`: DynamoDB table name (automatically set by serverless.yml)
+- `PROJECTS_TABLE`: DynamoDB table name (automatically set by serverless.yml)
+- `COGNITO_USER_POOL_ID`: Cognito User Pool ID (automatically set by serverless.yml)
+- `COGNITO_CLIENT_ID`: Cognito Client ID (automatically set by serverless.yml)
 - `AWS_REGION`: AWS region (default: us-east-1)
 - `AWS_ACCESS_KEY_ID`: AWS access key (for local development)
 - `AWS_SECRET_ACCESS_KEY`: AWS secret key (for local development)
@@ -364,17 +541,40 @@ npm run list-tables
 npm run create-table
 ```
 
-## DynamoDB Table Schema
+## DynamoDB Table Schemas
 
+### Projects Table
+**Table Name**: `projects-{stage}` (e.g., `projects-dev`, `projects-prod`)
+
+**Attributes**:
+- `id` (String, Partition Key): UUID
+- `userId` (String): Cognito User ID (GSI: userId-index)
+- `name` (String): Project name
+- `description` (String): Project description
+- `createdAt` (String): ISO timestamp
+- `updatedAt` (String): ISO timestamp
+
+**Global Secondary Indexes**:
+- `userId-index`: Query projects by user
+
+**Billing Mode**: Pay-per-request (on-demand)
+
+### Tasks Table
 **Table Name**: `tasks-{stage}` (e.g., `tasks-dev`, `tasks-prod`)
 
 **Attributes**:
 - `id` (String, Partition Key): UUID
+- `projectId` (String): Project ID (GSI: projectId-index)
+- `userId` (String): Cognito User ID (GSI: userId-index)
 - `title` (String): Task title
 - `description` (String): Task description
 - `status` (String): Task status (pending, in-progress, completed)
 - `createdAt` (String): ISO timestamp
 - `updatedAt` (String): ISO timestamp
+
+**Global Secondary Indexes**:
+- `projectId-index`: Query tasks by project
+- `userId-index`: Query tasks by user
 
 **Billing Mode**: Pay-per-request (on-demand)
 
@@ -418,11 +618,14 @@ npm run create-table
 
 ## Security Considerations
 
-- Never commit `.env` files (already in `.gitignore`)
-- Use IAM roles with least privilege principle
-- Enable CloudWatch logging for monitoring
-- Consider adding API rate limiting
-- Implement authentication/authorization (Cognito) for production
+- ✅ **AWS Cognito Authentication** - All endpoints protected except signup/login
+- ✅ **User Data Isolation** - Users can only access their own data
+- ✅ **JWT Token Validation** - API Gateway validates Cognito tokens
+- ✅ Never commit `.env` files (already in `.gitignore`)
+- ✅ Use IAM roles with least privilege principle
+- ✅ Enable CloudWatch logging for monitoring
+- ⚠️ Consider adding API rate limiting
+- ⚠️ Consider adding request validation middleware
 
 ## Next Steps
 

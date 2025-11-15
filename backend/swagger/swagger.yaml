@@ -2,7 +2,7 @@ openapi: 3.0.0
 info:
   title: Project Task Management API
   version: 1.0.0
-  description: REST API for managing projects and tasks with full CRUD operations
+  description: REST API for managing projects and tasks with full CRUD operations. All endpoints except authentication require Cognito authentication.
 servers:
   - url: http://localhost:3000
     description: Local development server (serverless-offline)
@@ -17,12 +17,355 @@ servers:
         default: dev
 
 paths:
-  /tasks:
+  # ========== AUTHENTICATION ENDPOINTS (Public) ==========
+  /auth/signup:
+    post:
+      summary: Sign up a new user
+      description: Creates a new user account. User will receive a confirmation code via email.
+      operationId: signup
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignupInput'
+            example:
+              email: "user@example.com"
+              password: "SecurePass123"
+              name: "John Doe"
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignupResponse'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/login:
+    post:
+      summary: Login user
+      description: Authenticates a user and returns access tokens
+      operationId: login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginInput'
+            example:
+              email: "user@example.com"
+              password: "SecurePass123"
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/confirm:
+    post:
+      summary: Confirm user signup
+      description: Confirms a user's email address using the confirmation code
+      operationId: confirmSignup
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ConfirmInput'
+            example:
+              email: "user@example.com"
+              confirmationCode: "123456"
+      responses:
+        '200':
+          description: User confirmed successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        '400':
+          description: Invalid confirmation code
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      description: Refreshes the access token using a refresh token
+      operationId: refreshToken
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshInput'
+      responses:
+        '200':
+          description: Token refreshed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RefreshResponse'
+        '400':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ========== PROJECTS ENDPOINTS (Protected) ==========
+  /projects:
     get:
-      summary: List all tasks
-      description: Retrieves a list of all tasks with optional pagination support
-      operationId: listTasks
+      summary: List user's projects
+      description: Retrieves all projects belonging to the authenticated user
+      operationId: listProjects
+      tags:
+        - Projects
+      security:
+        - CognitoAuth: []
       parameters:
+        - name: limit
+          in: query
+          description: Maximum number of items to return (1-1000)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: lastEvaluatedKey
+          in: query
+          description: Pagination token from previous response
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of projects
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProjectList'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      summary: Create a new project
+      description: Creates a new project for the authenticated user
+      operationId: createProject
+      tags:
+        - Projects
+      security:
+        - CognitoAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectInput'
+            example:
+              name: "My Project"
+              description: "Project description"
+      responses:
+        '201':
+          description: Project created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /projects/{id}:
+    get:
+      summary: Get a project by ID
+      description: Retrieves a single project by its unique identifier (must belong to authenticated user)
+      operationId: getProject
+      tags:
+        - Projects
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Project unique identifier (UUID)
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      responses:
+        '200':
+          description: Project found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      summary: Update a project
+      description: Updates an existing project (must belong to authenticated user)
+      operationId: updateProject
+      tags:
+        - Projects
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Project unique identifier (UUID)
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProjectInput'
+            example:
+              name: "Updated Project Name"
+              description: "Updated description"
+      responses:
+        '200':
+          description: Project updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      summary: Delete a project
+      description: Deletes a project by its unique identifier (must belong to authenticated user)
+      operationId: deleteProject
+      tags:
+        - Projects
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Project unique identifier (UUID)
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      responses:
+        '204':
+          description: Project deleted successfully (no content)
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Project not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ========== TASKS ENDPOINTS (Protected) ==========
+  /projects/{projectId}/tasks:
+    get:
+      summary: List tasks in a project
+      description: Retrieves all tasks belonging to a specific project (must belong to authenticated user)
+      operationId: listTasks
+      tags:
+        - Tasks
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: Project unique identifier (UUID)
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
         - name: limit
           in: query
           description: Maximum number of items to return (1-1000)
@@ -51,6 +394,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           description: Internal server error
           content:
@@ -60,8 +409,20 @@ paths:
     
     post:
       summary: Create a new task
-      description: Creates a new task with the provided information
+      description: Creates a new task in the specified project (must belong to authenticated user)
       operationId: createTask
+      tags:
+        - Tasks
+      security:
+        - CognitoAuth: []
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          description: Project unique identifier (UUID)
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
       requestBody:
         required: true
         content:
@@ -85,6 +446,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
         '500':
           description: Internal server error
           content:
@@ -95,8 +462,12 @@ paths:
   /tasks/{id}:
     get:
       summary: Get a task by ID
-      description: Retrieves a single task by its unique identifier
+      description: Retrieves a single task by its unique identifier (must belong to authenticated user)
       operationId: getTask
+      tags:
+        - Tasks
+      security:
+        - CognitoAuth: []
       parameters:
         - name: id
           in: path
@@ -112,8 +483,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
-        '400':
-          description: Invalid task ID format
+        '401':
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -124,17 +495,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
     
     put:
       summary: Update a task
-      description: Updates an existing task. All fields are optional - only provided fields will be updated.
+      description: Updates an existing task (must belong to authenticated user). All fields are optional.
       operationId: updateTask
+      tags:
+        - Tasks
+      security:
+        - CognitoAuth: []
       parameters:
         - name: id
           in: path
@@ -166,14 +535,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '404':
-          description: Task not found
+        '401':
+          description: Unauthorized
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
+        '404':
+          description: Task not found
           content:
             application/json:
               schema:
@@ -181,8 +550,12 @@ paths:
     
     delete:
       summary: Delete a task
-      description: Deletes a task by its unique identifier
+      description: Deletes a task by its unique identifier (must belong to authenticated user)
       operationId: deleteTask
+      tags:
+        - Tasks
+      security:
+        - CognitoAuth: []
       parameters:
         - name: id
           in: path
@@ -194,8 +567,8 @@ paths:
       responses:
         '204':
           description: Task deleted successfully (no content)
-        '400':
-          description: Invalid task ID format
+        '401':
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -206,15 +579,173 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Error'
-        '500':
-          description: Internal server error
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Error'
 
 components:
+  securitySchemes:
+    CognitoAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Cognito JWT token
+
   schemas:
+    # Authentication Schemas
+    SignupInput:
+      type: object
+      required:
+        - email
+        - password
+        - name
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          minLength: 8
+          example: "SecurePass123"
+        name:
+          type: string
+          example: "John Doe"
+
+    SignupResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        userSub:
+          type: string
+        codeDeliveryDetails:
+          type: object
+
+    LoginInput:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+        password:
+          type: string
+          example: "SecurePass123"
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        idToken:
+          type: string
+        refreshToken:
+          type: string
+        expiresIn:
+          type: integer
+
+    ConfirmInput:
+      type: object
+      required:
+        - email
+        - confirmationCode
+      properties:
+        email:
+          type: string
+          format: email
+        confirmationCode:
+          type: string
+
+    RefreshInput:
+      type: object
+      required:
+        - refreshToken
+      properties:
+        refreshToken:
+          type: string
+
+    RefreshResponse:
+      type: object
+      properties:
+        accessToken:
+          type: string
+        idToken:
+          type: string
+        expiresIn:
+          type: integer
+
+    # Project Schemas
+    Project:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique project identifier (UUID)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        userId:
+          type: string
+          description: User ID who owns this project
+        name:
+          type: string
+          description: Project name
+          example: "My Project"
+        description:
+          type: string
+          description: Project description
+          example: "Project description"
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp (ISO 8601)
+          example: "2024-01-15T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp (ISO 8601)
+          example: "2024-01-15T10:30:00.000Z"
+      required:
+        - id
+        - userId
+        - name
+        - createdAt
+        - updatedAt
+
+    ProjectInput:
+      type: object
+      properties:
+        name:
+          type: string
+          description: Project name
+          minLength: 1
+          example: "My Project"
+        description:
+          type: string
+          description: Project description (optional)
+          example: "Project description"
+      required:
+        - name
+
+    ProjectList:
+      type: object
+      properties:
+        projects:
+          type: array
+          description: Array of projects
+          items:
+            $ref: '#/components/schemas/Project'
+        count:
+          type: integer
+          description: Number of items returned
+        hasMore:
+          type: boolean
+          description: Whether there are more items available
+        lastEvaluatedKey:
+          type: string
+          nullable: true
+          description: Pagination token for next page
+
+    # Task Schemas
     Task:
       type: object
       properties:
@@ -222,6 +753,13 @@ components:
           type: string
           description: Unique task identifier (UUID)
           example: "550e8400-e29b-41d4-a716-446655440000"
+        projectId:
+          type: string
+          description: Project ID this task belongs to
+          example: "550e8400-e29b-41d4-a716-446655440001"
+        userId:
+          type: string
+          description: User ID who owns this task
         title:
           type: string
           description: Task title
@@ -247,12 +785,14 @@ components:
           example: "2024-01-15T10:30:00.000Z"
       required:
         - id
+        - projectId
+        - userId
         - title
         - description
         - status
         - createdAt
         - updatedAt
-    
+
     TaskInput:
       type: object
       properties:
@@ -275,7 +815,7 @@ components:
       required:
         - title
         - description
-    
+
     TaskList:
       type: object
       properties:
@@ -301,7 +841,7 @@ components:
         - tasks
         - count
         - hasMore
-    
+
     Error:
       type: object
       properties:
@@ -311,4 +851,3 @@ components:
           example: "Resource not found"
       required:
         - error
-

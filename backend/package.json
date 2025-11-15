@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node scripts/load-env-and-start.js",
     "dev:simple": "serverless offline start",
-    "create-table": "bash scripts/create-table.sh",
+    "create-table": "node scripts/create-tables.js",
+    "create-table:bash": "bash scripts/create-table.sh",
     "list-tables": "node scripts/list-tables.js",
     "swagger": "npx http-server swagger -p 8080 -o",
     "deploy:dev": "serverless deploy --stage dev",
@@ -27,6 +28,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.490.0",
     "@aws-sdk/lib-dynamodb": "^3.490.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.490.0",
     "uuid": "^9.0.1"
   },
   "devDependencies": {

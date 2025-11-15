@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Project name",
+      "minLength": 1,
+      "example": "My Project"
+    },
+    "description": {
+      "type": "string",
+      "description": "Project description (optional)",
+      "example": "Project description"
+    }
+  },
+  "required": ["name"]
+}
+

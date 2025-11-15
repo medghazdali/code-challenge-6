@@ -1,24 +1,11 @@
-const { listTasksByProjectId } = require('../lib/dynamodb');
-const { requireAuth } = require('../lib/auth');
-const { success, badRequest, error } = require('../lib/response');
+const { listProjectsByUserId } = require('../../lib/dynamodb');
+const { requireAuth } = require('../../lib/auth');
+const { success, badRequest, error } = require('../../lib/response');
 
 exports.handler = async (event) => {
   try {
     // Require authentication
     const userId = requireAuth(event);
-
-    // Extract projectId from path parameters
-    const projectId = event.pathParameters?.projectId;
-
-    if (!projectId) {
-      return badRequest('Project ID is required in path parameters');
-    }
-
-    // Validate UUID format
-    const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-    if (!uuidRegex.test(projectId)) {
-      return badRequest('Invalid project ID format');
-    }
 
     // Parse query parameters
     const queryParams = event.queryStringParameters || {};
@@ -32,16 +19,13 @@ exports.handler = async (event) => {
       return badRequest('Limit must be a number between 1 and 1000');
     }
 
-    // Get tasks from DynamoDB (filtered by projectId, which already ensures user ownership)
-    const result = await listTasksByProjectId(projectId, limit, lastEvaluatedKey);
-
-    // Filter by userId to ensure security (double check)
-    const userTasks = result.items.filter(task => task.userId === userId);
+    // Get projects from DynamoDB (filtered by userId)
+    const result = await listProjectsByUserId(userId, limit, lastEvaluatedKey);
 
     // Build response
     const response = {
-      tasks: userTasks,
-      count: userTasks.length,
+      projects: result.items,
+      count: result.count,
     };
 
     // Include pagination token if there are more items
@@ -56,7 +40,7 @@ exports.handler = async (event) => {
 
     return success(response);
   } catch (err) {
-    console.error('Error in listTasks handler:', err);
+    console.error('Error in listProjects handler:', err);
     if (err.message === 'Unauthorized: Authentication required') {
       return error('Unauthorized: Authentication required', 401);
     }
