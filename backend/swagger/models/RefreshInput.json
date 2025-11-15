@@ -1,0 +1,12 @@
+{
+  "type": "object",
+  "properties": {
+    "refreshToken": {
+      "type": "string",
+      "description": "Refresh token obtained from login",
+      "example": "eyJjdHkiOiJ..."
+    }
+  },
+  "required": ["refreshToken"]
+}
+

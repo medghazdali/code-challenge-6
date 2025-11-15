@@ -1,0 +1,26 @@
+{
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string",
+      "description": "Task title",
+      "minLength": 1,
+      "example": "Complete project documentation"
+    },
+    "description": {
+      "type": "string",
+      "description": "Task description",
+      "minLength": 1,
+      "example": "Write comprehensive README and API docs"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "in-progress", "completed"],
+      "description": "Task status (optional, defaults to 'pending')",
+      "default": "pending",
+      "example": "pending"
+    }
+  },
+  "required": ["title", "description"]
+}
+

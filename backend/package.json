@@ -1,0 +1,49 @@
+{
+  "name": "project-task-management-api",
+  "version": "1.0.0",
+  "description": "Serverless REST API for Project Task Management with AWS Lambda, API Gateway, and DynamoDB",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node scripts/load-env-and-start.js",
+    "dev:simple": "serverless offline start",
+    "create-table": "node scripts/create-tables.js",
+    "create-table:bash": "bash scripts/create-table.sh",
+    "list-tables": "node scripts/list-tables.js",
+    "get-cognito-ids": "node scripts/get-cognito-ids.js",
+    "swagger": "npx http-server swagger -p 8080 -o",
+    "deploy:dev": "node scripts/deploy.js --stage dev",
+    "deploy:prod": "node scripts/deploy.js --stage prod",
+    "test": "jest",
+    "test:unit": "jest tests/unit",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest tests/integration --testPathIgnorePatterns=/node_modules/",
+    "test:load": "artillery run tests/load/artillery.yml",
+    "test:all": "npm run test:unit && npm run test:integration"
+  },
+  "keywords": [
+    "serverless",
+    "aws",
+    "lambda",
+    "api-gateway",
+    "dynamodb"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.490.0",
+    "@aws-sdk/lib-dynamodb": "^3.490.0",
+    "@aws-sdk/client-cognito-identity-provider": "^3.490.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "artillery": "^2.0.0",
+    "aws-sdk-client-mock": "^3.0.0",
+    "jest": "^29.7.0",
+    "serverless": "^3.38.0",
+    "serverless-offline": "^13.3.3",
+    "serverless-aws-documentation": "^1.1.0",
+    "supertest": "^6.3.3"
+  }
+}
+

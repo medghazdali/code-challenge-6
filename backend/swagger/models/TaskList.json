@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "properties": {
+    "tasks": {
+      "type": "array",
+      "description": "Array of tasks",
+      "items": {
+        "type": "object",
+        "description": "Task object - see Task schema for full structure"
+      }
+    },
+    "count": {
+      "type": "integer",
+      "description": "Number of items returned",
+      "example": 10
+    },
+    "hasMore": {
+      "type": "boolean",
+      "description": "Whether there are more items available",
+      "example": false
+    },
+    "lastEvaluatedKey": {
+      "type": "string",
+      "description": "Pagination token for next page (if hasMore is true)",
+      "nullable": true,
+      "example": null
+    }
+  },
+  "required": ["tasks", "count", "hasMore"]
+}
+

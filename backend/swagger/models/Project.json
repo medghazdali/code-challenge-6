@@ -1,0 +1,39 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique project identifier (UUID)",
+      "example": "550e8400-e29b-41d4-a716-446655440000"
+    },
+    "userId": {
+      "type": "string",
+      "description": "User ID who owns this project",
+      "example": "cognito-user-id-123"
+    },
+    "name": {
+      "type": "string",
+      "description": "Project name",
+      "example": "My Project"
+    },
+    "description": {
+      "type": "string",
+      "description": "Project description",
+      "example": "Project description"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Creation timestamp (ISO 8601)",
+      "example": "2024-01-15T10:30:00.000Z"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp (ISO 8601)",
+      "example": "2024-01-15T10:30:00.000Z"
+    }
+  },
+  "required": ["id", "userId", "name", "createdAt", "updatedAt"]
+}
+

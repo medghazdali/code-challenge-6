@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "properties": {
+    "projects": {
+      "type": "array",
+      "description": "Array of projects",
+      "items": {
+        "type": "object",
+        "description": "Project object - see Project schema for full structure"
+      }
+    },
+    "count": {
+      "type": "integer",
+      "description": "Number of items returned",
+      "example": 10
+    },
+    "hasMore": {
+      "type": "boolean",
+      "description": "Whether there are more items available",
+      "example": false
+    },
+    "lastEvaluatedKey": {
+      "type": "string",
+      "description": "Pagination token for next page (if hasMore is true)",
+      "nullable": true,
+      "example": null
+    }
+  },
+  "required": ["projects", "count", "hasMore"]
+}
+

@@ -1,0 +1,31 @@
+{
+  "type": "object",
+  "properties": {
+    "message": {
+      "type": "string",
+      "description": "Success message",
+      "example": "User registered successfully. Please check your email for confirmation code."
+    },
+    "userSub": {
+      "type": "string",
+      "description": "Cognito user ID",
+      "example": "550e8400-e29b-41d4-a716-446655440000"
+    },
+    "codeDeliveryDetails": {
+      "type": "object",
+      "description": "Code delivery information",
+      "properties": {
+        "destination": {
+          "type": "string",
+          "example": "u***@e***.com"
+        },
+        "deliveryMedium": {
+          "type": "string",
+          "example": "EMAIL"
+        }
+      }
+    }
+  },
+  "required": ["message", "userSub"]
+}
+
