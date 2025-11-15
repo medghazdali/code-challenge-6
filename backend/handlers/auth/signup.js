@@ -30,23 +30,31 @@ exports.handler = async (event) => {
     const result = await signUp(email.trim().toLowerCase(), password, name.trim());
 
     return success({
-      message: 'User registered successfully. Please check your email for confirmation code.',
+      message: result.message || 'User registered and confirmed successfully. You can now login.',
       userSub: result.userSub,
-      codeDeliveryDetails: result.codeDeliveryDetails,
+      confirmed: result.confirmed || false,
     }, 201);
   } catch (err) {
     console.error('Error in signup handler:', err);
     
-    // Handle Cognito-specific errors
-    if (err.name === 'UsernameExistsException') {
-      return badRequest('User with this email already exists');
+    // Handle configuration errors
+    if (err.message && err.message.includes('COGNITO_CLIENT_ID is not configured')) {
+      return badRequest('Cognito is not configured. For local development, deploy to AWS first or set COGNITO_CLIENT_ID in .env file.');
     }
-    if (err.name === 'InvalidPasswordException') {
-      return badRequest('Password does not meet requirements');
-    }
-    if (err.name === 'InvalidParameterException') {
-      return badRequest(err.message || 'Invalid parameters');
-    }
+    
+        // Handle Cognito-specific errors
+        if (err.name === 'ResourceNotFoundException') {
+          return badRequest('Cognito User Pool or Client not found. Please deploy to AWS first or check your COGNITO_USER_POOL_ID and COGNITO_CLIENT_ID in .env file.');
+        }
+        if (err.name === 'UsernameExistsException') {
+          return badRequest('User with this email already exists');
+        }
+        if (err.name === 'InvalidPasswordException') {
+          return badRequest('Password does not meet requirements');
+        }
+        if (err.name === 'InvalidParameterException') {
+          return badRequest(err.message || 'Invalid parameters');
+        }
 
     return error('Internal server error', 500);
   }

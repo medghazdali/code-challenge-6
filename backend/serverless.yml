@@ -5,7 +5,7 @@ frameworkVersion: '3'
 provider:
   name: aws
   runtime: nodejs18.x
-  region: ${opt:region, 'us-east-1'}
+  region: ${opt:region, 'eu-north-1'}
   stage: ${opt:stage, 'dev'}
   memorySize: 256
   timeout: 30
@@ -13,11 +13,10 @@ provider:
     STAGE: ${self:provider.stage}
     TASKS_TABLE: ${self:custom.tasksTable}
     PROJECTS_TABLE: ${self:custom.projectsTable}
-    COGNITO_USER_POOL_ID: { Ref: CognitoUserPool }
-    COGNITO_CLIENT_ID: { Ref: CognitoUserPoolClient }
-    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID, ''}
-    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY, ''}
-    AWS_REGION: ${env:AWS_REGION, 'us-east-1'}
+    COGNITO_USER_POOL_ID: ${env:COGNITO_USER_POOL_ID, self:custom.cognitoUserPoolId}
+    COGNITO_CLIENT_ID: ${env:COGNITO_CLIENT_ID, self:custom.cognitoClientId}
+    # Note: AWS_REGION, AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY are reserved by Lambda
+    # They are automatically provided by AWS and should not be set as environment variables
   iam:
     role:
       statements:
@@ -54,7 +53,13 @@ provider:
             - cognito-idp:AdminDeleteUser
             - cognito-idp:AdminGetUser
             - cognito-idp:AdminUpdateUserAttributes
+            - cognito-idp:AdminConfirmSignUp
             - cognito-idp:ListUsers
+            - cognito-idp:SignUp
+            - cognito-idp:ConfirmSignUp
+            - cognito-idp:InitiateAuth
+            - cognito-idp:RespondToAuthChallenge
+            - cognito-idp:GetUser
           Resource:
             - Fn::GetAtt:
                 - CognitoUserPool
@@ -63,6 +68,11 @@ provider:
 custom:
   tasksTable: tasks-${self:provider.stage}
   projectsTable: projects-${self:provider.stage}
+  # Cognito IDs - use env vars if provided, otherwise use CloudFormation refs (only works when deployed)
+  cognitoUserPoolId:
+    Ref: CognitoUserPool
+  cognitoClientId:
+    Ref: CognitoUserPoolClient
   serverless-offline:
     httpPort: 3000
     lambdaPort: 3002
@@ -139,7 +149,8 @@ custom:
 
 plugins:
   - serverless-offline
-  - serverless-aws-documentation
+  # Temporarily disabled to fix deployment - will re-enable after fixing model references
+  # - serverless-aws-documentation
 
 functions:
   # ========== AUTHENTICATION ENDPOINTS (Public) ==========
@@ -254,6 +265,7 @@ functions:
           method: post
           cors: true
           authorizer:
+            name: cognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn:
               Fn::GetAtt:
@@ -287,10 +299,11 @@ functions:
     handler: handlers/projects/getProject.handler
     events:
       - http:
-          path: projects/{id}
+          path: projects/{projectId}
           method: get
           cors: true
           authorizer:
+            name: cognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn:
               Fn::GetAtt:
@@ -330,6 +343,7 @@ functions:
           method: get
           cors: true
           authorizer:
+            name: cognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn:
               Fn::GetAtt:
@@ -371,10 +385,11 @@ functions:
     handler: handlers/projects/updateProject.handler
     events:
       - http:
-          path: projects/{id}
+          path: projects/{projectId}
           method: put
           cors: true
           authorizer:
+            name: cognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn:
               Fn::GetAtt:
@@ -419,10 +434,11 @@ functions:
     handler: handlers/projects/deleteProject.handler
     events:
       - http:
-          path: projects/{id}
+          path: projects/{projectId}
           method: delete
           cors: true
           authorizer:
+            name: cognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn:
               Fn::GetAtt:
@@ -461,6 +477,7 @@ functions:
           method: post
           cors: true
           authorizer:
+            name: cognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn:
               Fn::GetAtt:
@@ -509,6 +526,7 @@ functions:
           method: get
           cors: true
           authorizer:
+            name: cognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn:
               Fn::GetAtt:
@@ -558,6 +576,7 @@ functions:
           method: get
           cors: true
           authorizer:
+            name: cognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn:
               Fn::GetAtt:
@@ -614,6 +633,7 @@ functions:
           method: put
           cors: true
           authorizer:
+            name: cognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn:
               Fn::GetAtt:
@@ -667,6 +687,7 @@ functions:
           method: delete
           cors: true
           authorizer:
+            name: cognitoAuthorizer
             type: COGNITO_USER_POOLS
             arn:
               Fn::GetAtt:
@@ -739,8 +760,8 @@ resources:
         ClientName: ${self:service}-${self:provider.stage}-client
         GenerateSecret: false
         ExplicitAuthFlows:
-          - USER_PASSWORD_AUTH
-          - REFRESH_TOKEN_AUTH
+          - ALLOW_USER_PASSWORD_AUTH
+          - ALLOW_REFRESH_TOKEN_AUTH
 
     # Projects Table
     ProjectsTable:

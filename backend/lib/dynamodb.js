@@ -3,7 +3,7 @@ const { DynamoDBDocumentClient, PutCommand, GetCommand, ScanCommand, QueryComman
 
 // Initialize DynamoDB Client
 const getDynamoDBClient = () => {
-  const region = process.env.AWS_REGION || process.env.REGION || 'us-east-1';
+  const region = process.env.AWS_REGION || process.env.REGION || 'eu-north-1';
   console.log('DynamoDB Region:', region);
   const clientConfig = {
     region: region,

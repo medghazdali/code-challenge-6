@@ -8,7 +8,7 @@ exports.handler = async (event) => {
     const userId = requireAuth(event);
 
     // Extract project ID from path parameters
-    const projectId = event.pathParameters?.id;
+    const projectId = event.pathParameters?.projectId;
 
     if (!projectId) {
       return badRequest('Project ID is required in path parameters');

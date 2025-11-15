@@ -32,7 +32,7 @@ if (fs.existsSync(envPath)) {
 }
 
 // Get configuration from environment
-const region = process.env.AWS_REGION || process.env.REGION || 'us-east-1';
+const region = process.env.AWS_REGION || process.env.REGION || 'eu-north-1';
 const stage = process.env.STAGE || 'dev';
 
 const tasksTable = `tasks-${stage}`;

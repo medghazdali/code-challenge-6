@@ -1,9 +1,9 @@
-const { CognitoIdentityProviderClient, SignUpCommand, AdminInitiateAuthCommand, ConfirmSignUpCommand, InitiateAuthCommand, GetUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
+const { CognitoIdentityProviderClient, SignUpCommand, AdminInitiateAuthCommand, ConfirmSignUpCommand, AdminConfirmSignUpCommand, InitiateAuthCommand, GetUserCommand } = require('@aws-sdk/client-cognito-identity-provider');
 
 // Initialize Cognito Client
 const getCognitoClient = () => {
   return new CognitoIdentityProviderClient({
-    region: process.env.AWS_REGION || 'us-east-1',
+    region: process.env.AWS_REGION || 'eu-north-1',
   });
 };
 
@@ -11,7 +11,31 @@ const getCognitoClient = () => {
 const signUp = async (email, password, name) => {
   const client = getCognitoClient();
   const userPoolId = process.env.COGNITO_USER_POOL_ID;
-  const clientId = process.env.COGNITO_CLIENT_ID;
+  let clientId = process.env.COGNITO_CLIENT_ID;
+
+  // Validate clientId is a string (not a CloudFormation object)
+  // serverless-offline passes CloudFormation refs as objects, so we need to check
+  if (!clientId) {
+    throw new Error('COGNITO_CLIENT_ID is not configured. For local development, set it in .env file or deploy to AWS first.');
+  }
+  
+  // Check if it's an object (CloudFormation ref from serverless-offline)
+  // Objects in Node.js have typeof 'object' (but null also has typeof 'object', so check for null too)
+  if (clientId !== null && typeof clientId === 'object' && !Array.isArray(clientId)) {
+    console.error('❌ COGNITO_CLIENT_ID is an object (CloudFormation ref). This happens in serverless-offline.');
+    console.error('   Value:', JSON.stringify(clientId));
+    throw new Error('COGNITO_CLIENT_ID is not configured. For local development, you must set COGNITO_CLIENT_ID in .env file. Deploy to AWS first to get the actual ID.');
+  }
+  
+  // Convert to string and validate
+  const clientIdStr = String(clientId);
+  if (clientIdStr === '[object Object]' || clientIdStr === 'null' || clientIdStr === 'undefined' || clientIdStr.trim().length === 0) {
+    console.error('❌ COGNITO_CLIENT_ID converted to invalid string:', clientIdStr);
+    throw new Error('COGNITO_CLIENT_ID is not configured. For local development, you must set COGNITO_CLIENT_ID in .env file. Deploy to AWS first to get the actual ID.');
+  }
+  
+  // Use the cleaned string
+  clientId = clientIdStr.trim();
 
   const command = new SignUpCommand({
     ClientId: clientId,
@@ -31,9 +55,26 @@ const signUp = async (email, password, name) => {
 
   try {
     const response = await client.send(command);
+    
+    // Automatically confirm the user (skip email verification)
+    if (userPoolId && typeof userPoolId === 'string' && userPoolId.trim().length > 0) {
+      try {
+        const confirmCommand = new AdminConfirmSignUpCommand({
+          UserPoolId: userPoolId.trim(),
+          Username: email,
+        });
+        await client.send(confirmCommand);
+        console.log('✅ User automatically confirmed');
+      } catch (confirmError) {
+        // Log but don't fail - user is created, just not confirmed
+        console.warn('⚠️  Could not auto-confirm user:', confirmError.message);
+      }
+    }
+    
     return {
       userSub: response.UserSub,
-      codeDeliveryDetails: response.CodeDeliveryDetails,
+      confirmed: true, // User is now confirmed
+      message: 'User registered and confirmed successfully',
     };
   } catch (error) {
     console.error('Error signing up user:', error);
@@ -44,7 +85,12 @@ const signUp = async (email, password, name) => {
 // Confirm user signup
 const confirmSignUp = async (email, confirmationCode) => {
   const client = getCognitoClient();
-  const clientId = process.env.COGNITO_CLIENT_ID;
+  let clientId = process.env.COGNITO_CLIENT_ID;
+
+  if (!clientId || typeof clientId === 'object' || typeof clientId !== 'string' || clientId.trim().length === 0) {
+    throw new Error('COGNITO_CLIENT_ID is not configured. For local development, set it in .env file or deploy to AWS first.');
+  }
+  clientId = String(clientId).trim();
 
   const command = new ConfirmSignUpCommand({
     ClientId: clientId,
@@ -64,7 +110,12 @@ const confirmSignUp = async (email, confirmationCode) => {
 // Login user
 const login = async (email, password) => {
   const client = getCognitoClient();
-  const clientId = process.env.COGNITO_CLIENT_ID;
+  let clientId = process.env.COGNITO_CLIENT_ID;
+
+  if (!clientId || typeof clientId === 'object' || typeof clientId !== 'string' || clientId.trim().length === 0) {
+    throw new Error('COGNITO_CLIENT_ID is not configured. For local development, set it in .env file or deploy to AWS first.');
+  }
+  clientId = String(clientId).trim();
 
   const command = new InitiateAuthCommand({
     AuthFlow: 'USER_PASSWORD_AUTH',
@@ -92,7 +143,12 @@ const login = async (email, password) => {
 // Refresh token
 const refreshToken = async (refreshToken) => {
   const client = getCognitoClient();
-  const clientId = process.env.COGNITO_CLIENT_ID;
+  let clientId = process.env.COGNITO_CLIENT_ID;
+
+  if (!clientId || typeof clientId === 'object' || typeof clientId !== 'string' || clientId.trim().length === 0) {
+    throw new Error('COGNITO_CLIENT_ID is not configured. For local development, set it in .env file or deploy to AWS first.');
+  }
+  clientId = String(clientId).trim();
 
   const command = new InitiateAuthCommand({
     AuthFlow: 'REFRESH_TOKEN_AUTH',

@@ -78,7 +78,7 @@ aws configure
 ```bash
 export AWS_ACCESS_KEY_ID=your_access_key
 export AWS_SECRET_ACCESS_KEY=your_secret_key
-export AWS_REGION=us-east-1
+export AWS_REGION=eu-north-1
 ```
 
 **Option C: Create `.env` file** (for local development)
@@ -86,6 +86,32 @@ export AWS_REGION=us-east-1
 cp .env.example .env
 # Edit .env with your credentials
 ```
+
+**Important for Cognito**: For local development, you need to set Cognito IDs in `.env`:
+
+### Option 1: Use the helper script (Recommended)
+1. **Deploy first** to create Cognito resources:
+   ```bash
+   npm run deploy:dev
+   ```
+2. **Get the IDs automatically**:
+   ```bash
+   npm run get-cognito-ids
+   ```
+   This will show you the IDs to add to your `.env` file.
+
+### Option 2: Get IDs manually from AWS Console
+1. Deploy: `npm run deploy:dev`
+2. Go to AWS Console → Cognito → User Pools
+3. Find the pool named `project-task-management-api-dev`
+4. Copy the **User Pool ID** (looks like: `eu-north-1_xxxxxxxxx`)
+5. Click on **App integration** tab → **App clients**
+6. Copy the **Client ID** (looks like: `xxxxxxxxxxxxxxxxxx`)
+7. Add to `.env`:
+   ```
+   COGNITO_USER_POOL_ID=eu-north-1_xxxxxxxxx
+   COGNITO_CLIENT_ID=xxxxxxxxxxxxxxxxxx
+   ```
 
 ### 3. Local Development
 
@@ -494,7 +520,7 @@ Add the following secrets to your GitHub repository:
 2. Add the following secrets:
    - `AWS_ACCESS_KEY_ID`: Your AWS access key
    - `AWS_SECRET_ACCESS_KEY`: Your AWS secret key
-   - `AWS_REGION`: AWS region (e.g., `us-east-1`)
+   - `AWS_REGION`: AWS region (e.g., `eu-north-1`)
 
 #### Workflow Behavior
 
@@ -548,7 +574,7 @@ backend/
 - `PROJECTS_TABLE`: DynamoDB table name (automatically set by serverless.yml)
 - `COGNITO_USER_POOL_ID`: Cognito User Pool ID (automatically set by serverless.yml)
 - `COGNITO_CLIENT_ID`: Cognito Client ID (automatically set by serverless.yml)
-- `AWS_REGION`: AWS region (default: us-east-1)
+- `AWS_REGION`: AWS region (default: eu-north-1)
 - `AWS_ACCESS_KEY_ID`: AWS access key (for local development)
 - `AWS_SECRET_ACCESS_KEY`: AWS secret key (for local development)
 

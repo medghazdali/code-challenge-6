@@ -4,7 +4,7 @@
 # This creates both tasks and projects tables with proper indexes
 
 # Get region from environment or use default
-REGION="${AWS_REGION:-us-east-1}"
+REGION="${AWS_REGION:-eu-north-1}"
 STAGE="${STAGE:-dev}"
 
 TASKS_TABLE="tasks-${STAGE}"

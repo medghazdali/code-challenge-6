@@ -9,9 +9,10 @@
     "create-table": "node scripts/create-tables.js",
     "create-table:bash": "bash scripts/create-table.sh",
     "list-tables": "node scripts/list-tables.js",
+    "get-cognito-ids": "node scripts/get-cognito-ids.js",
     "swagger": "npx http-server swagger -p 8080 -o",
-    "deploy:dev": "serverless deploy --stage dev",
-    "deploy:prod": "serverless deploy --stage prod",
+    "deploy:dev": "node scripts/deploy.js --stage dev",
+    "deploy:prod": "node scripts/deploy.js --stage prod",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage"
