@@ -45,9 +45,33 @@ custom:
     useChildProcesses: true
     noPrependStageInUrl: true
     printOutput: true
+  
+  # OpenAPI/Swagger Documentation
+  documentation:
+    version: '1.0.0'
+    title: 'Project Task Management API'
+    description: 'REST API for managing projects and tasks with full CRUD operations'
+    models:
+      - name: Task
+        description: 'Task object'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/Task.json)}
+      - name: TaskInput
+        description: 'Task input for creation/update'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/TaskInput.json)}
+      - name: TaskList
+        description: 'List of tasks with pagination'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/TaskList.json)}
+      - name: Error
+        description: 'Error response'
+        contentType: 'application/json'
+        schema: ${file(swagger/models/Error.json)}
 
 plugins:
   - serverless-offline
+  - serverless-aws-documentation
 
 functions:
   createTask:
@@ -57,6 +81,29 @@ functions:
           path: tasks
           method: post
           cors: true
+          documentation:
+            summary: Create a new task
+            description: Creates a new task with the provided information. Returns the created task with generated ID and timestamps.
+            requestBody:
+              description: Task data to create
+            requestModels:
+              'application/json': TaskInput
+            methodResponses:
+              - statusCode: 201
+                responseBody:
+                  description: Task created successfully
+                responseModels:
+                  'application/json': Task
+              - statusCode: 400
+                responseBody:
+                  description: Bad request - validation error
+                responseModels:
+                  'application/json': Error
+              - statusCode: 500
+                responseBody:
+                  description: Internal server error
+                responseModels:
+                  'application/json': Error
 
   getTask:
     handler: handlers/getTask.handler
@@ -65,6 +112,36 @@ functions:
           path: tasks/{id}
           method: get
           cors: true
+          documentation:
+            summary: Get a task by ID
+            description: Retrieves a single task by its unique identifier
+            pathParams:
+              - name: id
+                description: Task unique identifier (UUID)
+                schema:
+                  type: string
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+            methodResponses:
+              - statusCode: 200
+                responseBody:
+                  description: Task found
+                responseModels:
+                  'application/json': Task
+              - statusCode: 400
+                responseBody:
+                  description: Invalid task ID format
+                responseModels:
+                  'application/json': Error
+              - statusCode: 404
+                responseBody:
+                  description: Task not found
+                responseModels:
+                  'application/json': Error
+              - statusCode: 500
+                responseBody:
+                  description: Internal server error
+                responseModels:
+                  'application/json': Error
 
   listTasks:
     handler: handlers/listTasks.handler
@@ -73,6 +150,37 @@ functions:
           path: tasks
           method: get
           cors: true
+          documentation:
+            summary: List all tasks
+            description: Retrieves a list of all tasks with optional pagination support
+            queryParams:
+              - name: limit
+                description: Maximum number of items to return (1-1000)
+                schema:
+                  type: integer
+                  minimum: 1
+                  maximum: 1000
+                  default: 100
+              - name: lastEvaluatedKey
+                description: Pagination token from previous response (URL encoded JSON)
+                schema:
+                  type: string
+            methodResponses:
+              - statusCode: 200
+                responseBody:
+                  description: List of tasks
+                responseModels:
+                  'application/json': TaskList
+              - statusCode: 400
+                responseBody:
+                  description: Invalid query parameters
+                responseModels:
+                  'application/json': Error
+              - statusCode: 500
+                responseBody:
+                  description: Internal server error
+                responseModels:
+                  'application/json': Error
 
   updateTask:
     handler: handlers/updateTask.handler
@@ -81,6 +189,40 @@ functions:
           path: tasks/{id}
           method: put
           cors: true
+          documentation:
+            summary: Update a task
+            description: Updates an existing task. All fields are optional - only provided fields will be updated.
+            pathParams:
+              - name: id
+                description: Task unique identifier (UUID)
+                schema:
+                  type: string
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+            requestBody:
+              description: Task update data (all fields optional)
+            requestModels:
+              'application/json': TaskInput
+            methodResponses:
+              - statusCode: 200
+                responseBody:
+                  description: Task updated successfully
+                responseModels:
+                  'application/json': Task
+              - statusCode: 400
+                responseBody:
+                  description: Bad request - validation error
+                responseModels:
+                  'application/json': Error
+              - statusCode: 404
+                responseBody:
+                  description: Task not found
+                responseModels:
+                  'application/json': Error
+              - statusCode: 500
+                responseBody:
+                  description: Internal server error
+                responseModels:
+                  'application/json': Error
 
   deleteTask:
     handler: handlers/deleteTask.handler
@@ -89,6 +231,34 @@ functions:
           path: tasks/{id}
           method: delete
           cors: true
+          documentation:
+            summary: Delete a task
+            description: Deletes a task by its unique identifier. Returns 204 No Content on success.
+            pathParams:
+              - name: id
+                description: Task unique identifier (UUID)
+                schema:
+                  type: string
+                  pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+            methodResponses:
+              - statusCode: 204
+                responseBody:
+                  description: Task deleted successfully (no content)
+              - statusCode: 400
+                responseBody:
+                  description: Invalid task ID format
+                responseModels:
+                  'application/json': Error
+              - statusCode: 404
+                responseBody:
+                  description: Task not found
+                responseModels:
+                  'application/json': Error
+              - statusCode: 500
+                responseBody:
+                  description: Internal server error
+                responseModels:
+                  'application/json': Error
 
 resources:
   Resources:

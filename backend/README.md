@@ -30,6 +30,7 @@ A serverless REST API built with Serverless Framework, AWS Lambda, API Gateway, 
 - **Lambda Functions**: Serverless functions that handle business logic and data processing
 - **DynamoDB**: NoSQL database for storing tasks
 - **No Service Proxy**: All requests go through Lambda functions (no direct API Gateway → DynamoDB integration)
+- **OpenAPI/Swagger Documentation**: Auto-generated API documentation
 
 ## Features
 
@@ -40,6 +41,7 @@ A serverless REST API built with Serverless Framework, AWS Lambda, API Gateway, 
 - ✅ Local development support with serverless-offline
 - ✅ CI/CD pipeline with GitHub Actions
 - ✅ Automated infrastructure as code
+- ✅ OpenAPI/Swagger documentation
 
 ## Prerequisites
 
@@ -216,6 +218,21 @@ Response (200 OK):
 
 Response (204 No Content)
 
+## API Documentation (Swagger/OpenAPI)
+
+After deployment, the API documentation is automatically generated and available:
+
+- **API Gateway Console**: Go to your API Gateway → Documentation
+- **OpenAPI Spec**: Available at `https://{api-id}.execute-api.{region}.amazonaws.com/{stage}/documentation`
+- **Import to Postman/Insomnia**: Use the OpenAPI spec URL
+
+The documentation includes:
+- All endpoints with descriptions
+- Request/response schemas
+- Example values
+- Error responses
+- Query parameters and path parameters
+
 ## Task Status Values
 
 - `pending`: Task is not yet started
@@ -293,9 +310,18 @@ backend/
 ├── lib/                     # Shared utilities
 │   ├── dynamodb.js          # DynamoDB client and helper functions
 │   └── response.js          # Standardized API responses
+├── swagger/                 # OpenAPI/Swagger models
+│   └── models/
+│       ├── Task.json
+│       ├── TaskInput.json
+│       ├── TaskList.json
+│       └── Error.json
 ├── tests/                   # Unit tests
 │   └── handlers/
 ├── scripts/                 # Deployment scripts
+│   ├── load-env-and-start.js
+│   ├── list-tables.js
+│   └── create-table.sh
 ├── .env.example             # Environment variables template
 ├── .gitignore               # Git ignore rules
 └── README.md                # This file
@@ -306,6 +332,8 @@ backend/
 - `STAGE`: Deployment stage (dev, prod)
 - `TASKS_TABLE`: DynamoDB table name (automatically set by serverless.yml)
 - `AWS_REGION`: AWS region (default: us-east-1)
+- `AWS_ACCESS_KEY_ID`: AWS access key (for local development)
+- `AWS_SECRET_ACCESS_KEY`: AWS secret key (for local development)
 
 ## Testing
 
@@ -322,6 +350,18 @@ npm run test:watch
 Generate coverage report:
 ```bash
 npm run test:coverage
+```
+
+## Utility Scripts
+
+**List DynamoDB tables:**
+```bash
+npm run list-tables
+```
+
+**Create DynamoDB table:**
+```bash
+npm run create-table
 ```
 
 ## DynamoDB Table Schema
@@ -352,6 +392,13 @@ npm run test:coverage
 **Issue**: AWS SDK v2 deprecation warning
 - **Solution**: The project now uses AWS SDK v3. Run `npm install` to update dependencies
 
+**Issue**: ResourceNotFoundException - Table not found
+- **Solution**: 
+  1. Verify table exists: `npm run list-tables`
+  2. Check table name matches exactly: `tasks-dev` (case-sensitive)
+  3. Verify region matches: Check `AWS_REGION` in `.env` file
+  4. Create table if missing: `npm run create-table` or via AWS Console
+
 **Issue**: CORS errors
 - **Solution**: Ensure CORS is enabled in serverless.yml (already configured)
 
@@ -363,6 +410,12 @@ npm run test:coverage
 **Issue**: Table already exists
 - **Solution**: Delete the existing table or use a different stage name
 
+**Issue**: Swagger documentation not showing
+- **Solution**: 
+  1. Ensure `serverless-openapi-documentation` plugin is installed: `npm install`
+  2. Check plugin is listed in `serverless.yml` plugins section
+  3. Verify model files exist in `swagger/models/` directory
+
 ## Security Considerations
 
 - Never commit `.env` files (already in `.gitignore`)
@@ -373,7 +426,7 @@ npm run test:coverage
 
 ## Next Steps
 
-- [ ] Add AWS Cognito for authentication
+- [x] Add AWS Cognito for authentication
 - [ ] Implement unit and integration tests
 - [ ] Add API rate limiting
 - [ ] Set up CloudWatch alarms
@@ -387,4 +440,3 @@ MIT
 ## Author
 
 Created as part of a code challenge demonstrating serverless architecture best practices.
-

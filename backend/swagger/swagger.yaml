@@ -1,0 +1,314 @@
+openapi: 3.0.0
+info:
+  title: Project Task Management API
+  version: 1.0.0
+  description: REST API for managing projects and tasks with full CRUD operations
+servers:
+  - url: http://localhost:3000
+    description: Local development server (serverless-offline)
+  - url: https://{api-id}.execute-api.{region}.amazonaws.com/{stage}
+    description: AWS API Gateway
+    variables:
+      api-id:
+        default: your-api-id
+      region:
+        default: eu-north-1
+      stage:
+        default: dev
+
+paths:
+  /tasks:
+    get:
+      summary: List all tasks
+      description: Retrieves a list of all tasks with optional pagination support
+      operationId: listTasks
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of items to return (1-1000)
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+        - name: lastEvaluatedKey
+          in: query
+          description: Pagination token from previous response
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: List of tasks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskList'
+        '400':
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    post:
+      summary: Create a new task
+      description: Creates a new task with the provided information
+      operationId: createTask
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+            example:
+              title: "Complete project documentation"
+              description: "Write comprehensive README and API docs"
+              status: "pending"
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /tasks/{id}:
+    get:
+      summary: Get a task by ID
+      description: Retrieves a single task by its unique identifier
+      operationId: getTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task unique identifier (UUID)
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      responses:
+        '200':
+          description: Task found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Invalid task ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      summary: Update a task
+      description: Updates an existing task. All fields are optional - only provided fields will be updated.
+      operationId: updateTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task unique identifier (UUID)
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TaskInput'
+            example:
+              title: "Updated title"
+              description: "Updated description"
+              status: "in-progress"
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          description: Bad request - validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      summary: Delete a task
+      description: Deletes a task by its unique identifier
+      operationId: deleteTask
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task unique identifier (UUID)
+          schema:
+            type: string
+            pattern: '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+      responses:
+        '204':
+          description: Task deleted successfully (no content)
+        '400':
+          description: Invalid task ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '404':
+          description: Task not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  schemas:
+    Task:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Unique task identifier (UUID)
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        title:
+          type: string
+          description: Task title
+          example: "Complete project documentation"
+        description:
+          type: string
+          description: Task description
+          example: "Write comprehensive README and API docs"
+        status:
+          type: string
+          enum: [pending, in-progress, completed]
+          description: Task status
+          example: "pending"
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp (ISO 8601)
+          example: "2024-01-15T10:30:00.000Z"
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp (ISO 8601)
+          example: "2024-01-15T10:30:00.000Z"
+      required:
+        - id
+        - title
+        - description
+        - status
+        - createdAt
+        - updatedAt
+    
+    TaskInput:
+      type: object
+      properties:
+        title:
+          type: string
+          description: Task title
+          minLength: 1
+          example: "Complete project documentation"
+        description:
+          type: string
+          description: Task description
+          minLength: 1
+          example: "Write comprehensive README and API docs"
+        status:
+          type: string
+          enum: [pending, in-progress, completed]
+          description: Task status (optional, defaults to 'pending')
+          default: pending
+          example: "pending"
+      required:
+        - title
+        - description
+    
+    TaskList:
+      type: object
+      properties:
+        tasks:
+          type: array
+          description: Array of tasks
+          items:
+            $ref: '#/components/schemas/Task'
+        count:
+          type: integer
+          description: Number of items returned
+          example: 10
+        hasMore:
+          type: boolean
+          description: Whether there are more items available
+          example: false
+        lastEvaluatedKey:
+          type: string
+          nullable: true
+          description: Pagination token for next page (if hasMore is true)
+          example: null
+      required:
+        - tasks
+        - count
+        - hasMore
+    
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error message
+          example: "Resource not found"
+      required:
+        - error
+

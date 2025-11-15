@@ -1,0 +1,40 @@
+{
+  "type": "object",
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Unique task identifier (UUID)",
+      "example": "550e8400-e29b-41d4-a716-446655440000"
+    },
+    "title": {
+      "type": "string",
+      "description": "Task title",
+      "example": "Complete project documentation"
+    },
+    "description": {
+      "type": "string",
+      "description": "Task description",
+      "example": "Write comprehensive README and API docs"
+    },
+    "status": {
+      "type": "string",
+      "enum": ["pending", "in-progress", "completed"],
+      "description": "Task status",
+      "example": "pending"
+    },
+    "createdAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Creation timestamp (ISO 8601)",
+      "example": "2024-01-15T10:30:00.000Z"
+    },
+    "updatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Last update timestamp (ISO 8601)",
+      "example": "2024-01-15T10:30:00.000Z"
+    }
+  },
+  "required": ["id", "title", "description", "status", "createdAt", "updatedAt"]
+}
+
