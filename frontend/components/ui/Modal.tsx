@@ -1,6 +1,7 @@
 'use client';
 
 import { ReactNode } from 'react';
+import { CloseIcon } from './Icons';
 
 interface ModalProps {
   isOpen: boolean;
@@ -19,9 +20,9 @@ export default function Modal({ isOpen, onClose, title, children }: ModalProps) 
           <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{title}</h2>
           <button
             onClick={onClose}
-            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors"
+            className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition-colors cursor-pointer p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700"
           >
-            ✕
+            <CloseIcon className="w-5 h-5" />
           </button>
         </div>
         {children}

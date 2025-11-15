@@ -31,6 +31,17 @@ export function useProjects() {
     }
   };
 
+  const updateProject = async (projectId: string, formData: ProjectFormData) => {
+    try {
+      setError('');
+      await projectsAPI.update(projectId, formData.name, formData.description);
+      await loadProjects();
+    } catch (err: any) {
+      setError(err.response?.data?.error || 'Failed to update project');
+      throw err;
+    }
+  };
+
   const deleteProject = async (projectId: string) => {
     try {
       setError('');
@@ -51,6 +62,7 @@ export function useProjects() {
     loading,
     error,
     createProject,
+    updateProject,
     deleteProject,
     reloadProjects: loadProjects,
   };

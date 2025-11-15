@@ -3,41 +3,86 @@
 import { useState } from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { useProjects } from '@/hooks/useProjects';
-import { ProjectFormData } from '@/types';
+import { Project, ProjectFormData } from '@/types';
 import Modal from '@/components/ui/Modal';
 import ErrorAlert from '@/components/ui/ErrorAlert';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import ProjectCard from '@/components/projects/ProjectCard';
 import ProjectForm from '@/components/projects/ProjectForm';
+import { useToastContext } from '@/components/ToastProvider';
 
 export default function ProjectsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [projectFormData, setProjectFormData] = useState<ProjectFormData>({
     name: '',
     description: '',
   });
 
-  const { projects, loading, error, createProject, deleteProject } = useProjects();
+  const { projects, loading, error, createProject, updateProject, deleteProject } = useProjects();
+  const { showSuccess, showError } = useToastContext();
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsCreating(true);
     try {
       await createProject(projectFormData);
       setShowCreateModal(false);
       setProjectFormData({ name: '', description: '' });
+      showSuccess('Project created successfully!');
     } catch (err) {
-      // Error is handled by hook
+      showError('Failed to create project. Please try again.');
+    } finally {
+      setIsCreating(false);
     }
   };
 
-  const handleDelete = async (projectId: string) => {
-    if (!confirm('Are you sure you want to delete this project? All tasks will be deleted too.')) {
-      return;
-    }
+  const handleUpdate = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProject) return;
+    setIsUpdating(true);
     try {
-      await deleteProject(projectId);
+      await updateProject(editingProject.id, projectFormData);
+      setShowEditModal(false);
+      setEditingProject(null);
+      setProjectFormData({ name: '', description: '' });
+      showSuccess('Project updated successfully!');
     } catch (err) {
-      // Error is handled by hook
+      showError('Failed to update project. Please try again.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleEdit = (project: Project) => {
+    setEditingProject(project);
+    setProjectFormData({
+      name: project.name,
+      description: project.description || '',
+    });
+    setShowEditModal(true);
+  };
+
+  const handleDeleteClick = (project: Project) => {
+    setDeletingProject(project);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingProject) return;
+    try {
+      await deleteProject(deletingProject.id);
+      setShowDeleteModal(false);
+      setDeletingProject(null);
+      showSuccess('Project deleted successfully!');
+    } catch (err) {
+      showError('Failed to delete project. Please try again.');
     }
   };
 
@@ -80,7 +125,7 @@ export default function ProjectsPage() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {projects.map((project) => (
-                <ProjectCard key={project.id} project={project} onDelete={handleDelete} />
+                <ProjectCard key={project.id} project={project} onEdit={handleEdit} onDelete={handleDeleteClick} />
               ))}
             </div>
           )}
@@ -88,8 +133,10 @@ export default function ProjectsPage() {
           <Modal
             isOpen={showCreateModal}
             onClose={() => {
-              setShowCreateModal(false);
-              setProjectFormData({ name: '', description: '' });
+              if (!isCreating) {
+                setShowCreateModal(false);
+                setProjectFormData({ name: '', description: '' });
+              }
             }}
             title="Create New Project"
           >
@@ -98,11 +145,55 @@ export default function ProjectsPage() {
               onChange={setProjectFormData}
               onSubmit={handleCreate}
               onCancel={() => {
-                setShowCreateModal(false);
-                setProjectFormData({ name: '', description: '' });
+                if (!isCreating) {
+                  setShowCreateModal(false);
+                  setProjectFormData({ name: '', description: '' });
+                }
               }}
+              isLoading={isCreating}
             />
           </Modal>
+
+          <Modal
+            isOpen={showEditModal}
+            onClose={() => {
+              if (!isUpdating) {
+                setShowEditModal(false);
+                setEditingProject(null);
+                setProjectFormData({ name: '', description: '' });
+              }
+            }}
+            title="Edit Project"
+          >
+            <ProjectForm
+              formData={projectFormData}
+              onChange={setProjectFormData}
+              onSubmit={handleUpdate}
+              onCancel={() => {
+                if (!isUpdating) {
+                  setShowEditModal(false);
+                  setEditingProject(null);
+                  setProjectFormData({ name: '', description: '' });
+                }
+              }}
+              submitLabel="Update Project"
+              isLoading={isUpdating}
+            />
+          </Modal>
+
+          <ConfirmModal
+            isOpen={showDeleteModal}
+            onClose={() => {
+              setShowDeleteModal(false);
+              setDeletingProject(null);
+            }}
+            onConfirm={handleDeleteConfirm}
+            title="Delete Project"
+            message={`Are you sure you want to delete "${deletingProject?.name}"? This action cannot be undone and all tasks in this project will also be deleted.`}
+            confirmText="Delete"
+            cancelText="Cancel"
+            confirmColor="red"
+          />
         </div>
       </div>
     </ProtectedRoute>

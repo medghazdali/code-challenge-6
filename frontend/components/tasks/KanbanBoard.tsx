@@ -6,7 +6,7 @@ import KanbanColumn from './KanbanColumn';
 interface KanbanBoardProps {
   tasks: Task[];
   onEdit: (task: Task) => void;
-  onDelete: (taskId: string) => void;
+  onDelete: (task: Task) => void;
 }
 
 export default function KanbanBoard({ tasks, onEdit, onDelete }: KanbanBoardProps) {

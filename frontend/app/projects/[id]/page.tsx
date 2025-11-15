@@ -10,8 +10,10 @@ import { Project, Task, TaskFormData } from '@/types';
 import Modal from '@/components/ui/Modal';
 import ErrorAlert from '@/components/ui/ErrorAlert';
 import LoadingSpinner from '@/components/ui/LoadingSpinner';
+import ConfirmModal from '@/components/ui/ConfirmModal';
 import TaskForm from '@/components/tasks/TaskForm';
 import KanbanBoard from '@/components/tasks/KanbanBoard';
+import { useToastContext } from '@/components/ToastProvider';
 
 export default function ProjectDetailPage() {
   const params = useParams();
@@ -20,7 +22,11 @@ export default function ProjectDetailPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const [deletingTask, setDeletingTask] = useState<Task | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
   const [taskFormData, setTaskFormData] = useState<TaskFormData>({
     title: '',
     description: '',
@@ -28,6 +34,7 @@ export default function ProjectDetailPage() {
   });
 
   const { tasks, loading, error, createTask, updateTask, deleteTask } = useTasks(projectId);
+  const { showSuccess, showError } = useToastContext();
 
   useEffect(() => {
     if (projectId) {
@@ -46,34 +53,50 @@ export default function ProjectDetailPage() {
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsCreating(true);
     try {
       await createTask(taskFormData);
       setShowCreateModal(false);
       setTaskFormData({ title: '', description: '', status: 'pending' });
+      showSuccess('Task created successfully!');
     } catch (err) {
-      // Error is handled by hook
+      showError('Failed to create task. Please try again.');
+    } finally {
+      setIsCreating(false);
     }
   };
 
   const handleUpdateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingTask) return;
+    setIsUpdating(true);
     try {
       await updateTask(editingTask.id, taskFormData);
       setShowEditModal(false);
       setEditingTask(null);
       setTaskFormData({ title: '', description: '', status: 'pending' });
+      showSuccess('Task updated successfully!');
     } catch (err) {
-      // Error is handled by hook
+      showError('Failed to update task. Please try again.');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+  const handleDeleteClick = (task: Task) => {
+    setDeletingTask(task);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!deletingTask) return;
     try {
-      await deleteTask(taskId);
+      await deleteTask(deletingTask.id);
+      setShowDeleteModal(false);
+      setDeletingTask(null);
+      showSuccess('Task deleted successfully!');
     } catch (err) {
-      // Error is handled by hook
+      showError('Failed to delete task. Please try again.');
     }
   };
 
@@ -148,14 +171,16 @@ export default function ProjectDetailPage() {
               </button>
             </div>
           ) : (
-            <KanbanBoard tasks={tasks} onEdit={openEditModal} onDelete={handleDeleteTask} />
+            <KanbanBoard tasks={tasks} onEdit={openEditModal} onDelete={handleDeleteClick} />
           )}
 
           <Modal
             isOpen={showCreateModal}
             onClose={() => {
-              setShowCreateModal(false);
-              setTaskFormData({ title: '', description: '', status: 'pending' });
+              if (!isCreating) {
+                setShowCreateModal(false);
+                setTaskFormData({ title: '', description: '', status: 'pending' });
+              }
             }}
             title="Create New Task"
           >
@@ -164,18 +189,23 @@ export default function ProjectDetailPage() {
               onChange={setTaskFormData}
               onSubmit={handleCreateTask}
               onCancel={() => {
-                setShowCreateModal(false);
-                setTaskFormData({ title: '', description: '', status: 'pending' });
+                if (!isCreating) {
+                  setShowCreateModal(false);
+                  setTaskFormData({ title: '', description: '', status: 'pending' });
+                }
               }}
+              isLoading={isCreating}
             />
           </Modal>
 
           <Modal
             isOpen={showEditModal}
             onClose={() => {
-              setShowEditModal(false);
-              setEditingTask(null);
-              setTaskFormData({ title: '', description: '', status: 'pending' });
+              if (!isUpdating) {
+                setShowEditModal(false);
+                setEditingTask(null);
+                setTaskFormData({ title: '', description: '', status: 'pending' });
+              }
             }}
             title="Edit Task"
           >
@@ -184,13 +214,30 @@ export default function ProjectDetailPage() {
               onChange={setTaskFormData}
               onSubmit={handleUpdateTask}
               onCancel={() => {
-                setShowEditModal(false);
-                setEditingTask(null);
-                setTaskFormData({ title: '', description: '', status: 'pending' });
+                if (!isUpdating) {
+                  setShowEditModal(false);
+                  setEditingTask(null);
+                  setTaskFormData({ title: '', description: '', status: 'pending' });
+                }
               }}
               submitLabel="Update Task"
+              isLoading={isUpdating}
             />
           </Modal>
+
+          <ConfirmModal
+            isOpen={showDeleteModal}
+            onClose={() => {
+              setShowDeleteModal(false);
+              setDeletingTask(null);
+            }}
+            onConfirm={handleDeleteConfirm}
+            title="Delete Task"
+            message={`Are you sure you want to delete "${deletingTask?.title}"? This action cannot be undone.`}
+            confirmText="Delete"
+            cancelText="Cancel"
+            confirmColor="red"
+          />
         </div>
       </div>
     </ProtectedRoute>

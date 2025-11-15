@@ -1,6 +1,7 @@
 'use client';
 
 import { ProjectFormData } from '@/types';
+import { CloseIcon, CheckIcon } from '@/components/ui/Icons';
 
 interface ProjectFormProps {
   formData: ProjectFormData;
@@ -8,6 +9,7 @@ interface ProjectFormProps {
   onSubmit: (e: React.FormEvent) => void;
   onCancel: () => void;
   submitLabel?: string;
+  isLoading?: boolean;
 }
 
 export default function ProjectForm({
@@ -16,6 +18,7 @@ export default function ProjectForm({
   onSubmit,
   onCancel,
   submitLabel = 'Create Project',
+  isLoading = false,
 }: ProjectFormProps) {
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -48,15 +51,27 @@ export default function ProjectForm({
         <button
           type="button"
           onClick={onCancel}
-          className="px-6 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg font-medium transition-all"
+          className="px-6 py-3 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg font-medium transition-all cursor-pointer flex items-center space-x-2"
         >
-          Cancel
+          <CloseIcon className="w-4 h-4" />
+          <span>Cancel</span>
         </button>
         <button
           type="submit"
-          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl"
+          disabled={isLoading}
+          className="px-6 py-3 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg font-semibold transition-all shadow-lg hover:shadow-xl cursor-pointer flex items-center space-x-2 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {submitLabel}
+          {isLoading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+              <span>Processing...</span>
+            </>
+          ) : (
+            <>
+              <CheckIcon className="w-4 h-4" />
+              <span>{submitLabel}</span>
+            </>
+          )}
         </button>
       </div>
     </form>

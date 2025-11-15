@@ -1,13 +1,14 @@
 'use client';
 
 import { Task } from '@/types';
+import { EditIcon, DeleteIcon } from '@/components/ui/Icons';
 
 interface KanbanColumnProps {
   title: string;
   tasks: Task[];
   status: 'pending' | 'in-progress' | 'completed';
   onEdit: (task: Task) => void;
-  onDelete: (taskId: string) => void;
+  onDelete: (task: Task) => void;
   headerBg: string;
   headerText: string;
   headerBorder: string;
@@ -69,15 +70,17 @@ export default function KanbanColumn({
             <div className="flex justify-between items-center pt-2 border-t border-slate-100 dark:border-slate-700">
               <button
                 onClick={() => onEdit(task)}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-xs font-medium transition-colors"
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-xs font-medium transition-colors cursor-pointer flex items-center space-x-1.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 px-2 py-1 rounded"
               >
-                Edit
+                <EditIcon className="w-3.5 h-3.5" />
+                <span>Edit</span>
               </button>
               <button
-                onClick={() => onDelete(task.id)}
-                className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs font-medium transition-colors"
+                onClick={() => onDelete(task)}
+                className="text-red-600 hover:text-red-700 dark:text-red-400 text-xs font-medium transition-colors cursor-pointer flex items-center space-x-1.5 hover:bg-red-50 dark:hover:bg-red-900/20 px-2 py-1 rounded"
               >
-                Delete
+                <DeleteIcon className="w-3.5 h-3.5" />
+                <span>Delete</span>
               </button>
             </div>
           </div>
