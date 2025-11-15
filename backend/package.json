@@ -1,0 +1,37 @@
+{
+  "name": "project-task-management-api",
+  "version": "1.0.0",
+  "description": "Serverless REST API for Project Task Management with AWS Lambda, API Gateway, and DynamoDB",
+  "main": "index.js",
+  "scripts": {
+    "dev": "node scripts/load-env-and-start.js",
+    "dev:simple": "serverless offline start",
+    "create-table": "bash scripts/create-table.sh",
+    "list-tables": "node scripts/list-tables.js",
+    "deploy:dev": "serverless deploy --stage dev",
+    "deploy:prod": "serverless deploy --stage prod",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage"
+  },
+  "keywords": [
+    "serverless",
+    "aws",
+    "lambda",
+    "api-gateway",
+    "dynamodb"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.490.0",
+    "@aws-sdk/lib-dynamodb": "^3.490.0",
+    "uuid": "^9.0.1"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "serverless": "^3.38.0",
+    "serverless-offline": "^13.3.3"
+  }
+}
+

@@ -1,0 +1,108 @@
+service: project-task-management-api
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  memorySize: 256
+  timeout: 30
+  environment:
+    STAGE: ${self:provider.stage}
+    TASKS_TABLE: ${self:custom.tasksTable}
+    AWS_ACCESS_KEY_ID: ${env:AWS_ACCESS_KEY_ID, ''}
+    AWS_SECRET_ACCESS_KEY: ${env:AWS_SECRET_ACCESS_KEY, ''}
+    AWS_REGION: ${env:AWS_REGION, 'us-east-1'}
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - dynamodb:Query
+            - dynamodb:Scan
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:DeleteItem
+          Resource:
+            - Fn::GetAtt:
+                - TasksTable
+                - Arn
+            - Fn::Join:
+                - ''
+                - - Fn::GetAtt:
+                      - TasksTable
+                      - Arn
+                  - '/index/*'
+
+custom:
+  tasksTable: tasks-${self:provider.stage}
+  serverless-offline:
+    httpPort: 3000
+    lambdaPort: 3002
+    useChildProcesses: true
+    noPrependStageInUrl: true
+    printOutput: true
+
+plugins:
+  - serverless-offline
+
+functions:
+  createTask:
+    handler: handlers/createTask.handler
+    events:
+      - http:
+          path: tasks
+          method: post
+          cors: true
+
+  getTask:
+    handler: handlers/getTask.handler
+    events:
+      - http:
+          path: tasks/{id}
+          method: get
+          cors: true
+
+  listTasks:
+    handler: handlers/listTasks.handler
+    events:
+      - http:
+          path: tasks
+          method: get
+          cors: true
+
+  updateTask:
+    handler: handlers/updateTask.handler
+    events:
+      - http:
+          path: tasks/{id}
+          method: put
+          cors: true
+
+  deleteTask:
+    handler: handlers/deleteTask.handler
+    events:
+      - http:
+          path: tasks/{id}
+          method: delete
+          cors: true
+
+resources:
+  Resources:
+    TasksTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.tasksTable}
+        AttributeDefinitions:
+          - AttributeName: id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: id
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+        StreamSpecification:
+          StreamViewType: NEW_AND_OLD_IMAGES
+
