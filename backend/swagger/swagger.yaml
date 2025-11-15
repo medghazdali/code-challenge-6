@@ -5,16 +5,19 @@ info:
   description: REST API for managing projects and tasks with full CRUD operations. All endpoints except authentication require Cognito authentication.
 servers:
   - url: http://localhost:3000
-    description: Local development server (serverless-offline)
+    description: Local development server (serverless-offline) - Use this for local testing
   - url: https://{api-id}.execute-api.{region}.amazonaws.com/{stage}
-    description: AWS API Gateway
+    description: AWS API Gateway - Update api-id after deployment (get from serverless deploy output)
     variables:
       api-id:
         default: your-api-id
+        description: Your API Gateway ID (found in serverless deploy output)
       region:
         default: eu-north-1
+        description: AWS region where API is deployed
       stage:
         default: dev
+        description: Deployment stage (dev, prod)
 
 paths:
   # ========== AUTHENTICATION ENDPOINTS (Public) ==========

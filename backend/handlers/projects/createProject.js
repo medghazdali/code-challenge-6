@@ -5,8 +5,18 @@ const { success, badRequest, error } = require('../../lib/response');
 
 exports.handler = async (event) => {
   try {
-    // Require authentication
-    const userId = requireAuth(event);
+    // Require authentication - MUST be first thing we do
+    let userId;
+    try {
+      userId = requireAuth(event);
+    } catch (authError) {
+      // Explicitly catch auth errors and return 401
+      console.error('❌ Authentication error:', authError.message);
+      return error('Unauthorized: Authentication required', 401);
+    }
+    
+    // If we get here, userId is valid
+    console.log('✅ Authenticated user:', userId);
 
     // Parse request body
     let body;

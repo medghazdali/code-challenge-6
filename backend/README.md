@@ -413,6 +413,46 @@ Users (Cognito)
 - `in-progress`: Task is currently being worked on
 - `completed`: Task is finished
 
+## Authentication Flow
+
+1. **Sign Up**: User creates account → receives confirmation code via email
+2. **Confirm**: User confirms email with code
+3. **Login**: User logs in → receives access token, ID token, and refresh token
+4. **API Calls**: Include access token in `Authorization: Bearer <token>` header
+5. **Refresh**: Use refresh token to get new access token when expired
+
+## Local Development with Authentication
+
+**⚠️ IMPORTANT:** `serverless-offline` does NOT enforce Cognito authorizers. Authentication is still enforced at the handler level, but you need to provide a test user ID for local testing.
+
+### Option 1: Use Test User ID Header (Development Only)
+
+For local testing with `serverless-offline`, add this header to your requests:
+
+```
+X-Test-User-Id: test-user-id-123
+```
+
+**In Swagger UI:**
+1. Click "Try it out" on any protected endpoint
+2. Scroll down to see the request parameters
+3. Add a new header: `X-Test-User-Id` with value `test-user-123`
+4. Execute the request
+
+**Using curl:**
+```bash
+curl -X POST http://localhost:3000/projects \
+  -H "Content-Type: application/json" \
+  -H "X-Test-User-Id: test-user-123" \
+  -d '{"name": "My Project", "description": "Test"}'
+```
+
+**Note:** Without this header, you will get `401 Unauthorized` - authentication is enforced even in local development.
+
+### Option 2: Deploy to AWS and Test
+
+Deploy to dev stage and test with real Cognito tokens from the login endpoint. In production, API Gateway validates JWT tokens automatically.
+
 ## Error Responses
 
 All errors follow this format:

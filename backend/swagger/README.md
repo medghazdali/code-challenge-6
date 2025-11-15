@@ -82,7 +82,10 @@ To update the documentation:
 
 ## Notes
 
-- The local Swagger UI points to `http://localhost:3000/dev` by default
-- Update the `servers` section in `swagger.yaml` if your API URL changes
-- After deployment, update the server URL in `swagger.yaml` with your actual API Gateway URL
+- **Multiple Servers**: Swagger UI shows two servers:
+  - `http://localhost:3000` - For local testing with serverless-offline
+  - AWS API Gateway URL - For testing deployed API (update `api-id` after deployment)
+- Use the server dropdown in Swagger UI to switch between environments
+- After deployment, update the `api-id` variable in `swagger.yaml` with your actual API Gateway ID (found in `serverless deploy` output)
+- The local server doesn't require `/dev` prefix (configured with `noPrependStageInUrl: true`)
 

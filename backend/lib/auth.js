@@ -16,30 +16,24 @@ const getUserIdFromEvent = (event) => {
     }
 
     // Fallback: try to get from authorizer.principalId
+    // BUT reject serverless-offline mock values
     const principalId = event.requestContext?.authorizer?.principalId;
-    if (principalId) {
+    if (principalId && !principalId.includes('offlineContext')) {
+      // Only accept real principalId, not serverless-offline mocks
       return principalId;
     }
 
     // For local development with serverless-offline
-    // Check for a test user ID in headers (for development only)
-    if (process.env.STAGE === 'dev' || process.env.NODE_ENV === 'development') {
-      const testUserId = event.headers?.['x-test-user-id'] || event.headers?.['X-Test-User-Id'];
-      if (testUserId) {
-        console.warn('⚠️  Using test user ID for local development');
-        return testUserId;
-      }
+    // ONLY allow test user ID if explicitly provided via header
+    // This is a development-only bypass - authentication is still required
+    const testUserId = event.headers?.['x-test-user-id'] || event.headers?.['X-Test-User-Id'];
+    if (testUserId) {
+      console.warn('⚠️  Using test user ID for local development (X-Test-User-Id header)');
+      return testUserId;
     }
 
-    // For local development or testing - try to extract from Authorization header
-    const authHeader = event.headers?.Authorization || event.headers?.authorization;
-    if (authHeader && authHeader.startsWith('Bearer ')) {
-      // In production, API Gateway authorizer handles this
-      // For local dev, we can't verify JWT without additional setup
-      // Return null to require proper authentication
-      return null;
-    }
-
+    // No authentication found - return null
+    // This will cause requireAuth() to throw an error
     return null;
   } catch (error) {
     console.error('Error extracting user ID:', error);
@@ -55,10 +49,35 @@ const isAuthenticated = (event) => {
 
 // Require authentication (throws error if not authenticated)
 const requireAuth = (event) => {
+  // Always check - no bypasses
   const userId = getUserIdFromEvent(event);
-  if (!userId) {
-    throw new Error('Unauthorized: Authentication required');
+  
+    // Explicit check - userId must be a non-empty string
+    // Also reject serverless-offline mock values
+    if (!userId || 
+        typeof userId !== 'string' || 
+        userId.trim().length === 0 ||
+        userId.includes('offlineContext')) {
+    // Log debug info in development
+    console.error('❌ Authentication failed - no valid userId found');
+    console.error('Event structure:', {
+      hasRequestContext: !!event.requestContext,
+      hasAuthorizer: !!event.requestContext?.authorizer,
+      hasClaims: !!event.requestContext?.authorizer?.claims,
+      principalId: event.requestContext?.authorizer?.principalId,
+      headers: Object.keys(event.headers || {}),
+      hasTestHeader: !!(event.headers?.['x-test-user-id'] || event.headers?.['X-Test-User-Id']),
+      userIdValue: userId,
+      userIdType: typeof userId,
+    });
+    console.error('💡 For local development, add header: X-Test-User-Id: <test-user-id>');
+    
+    // Always throw - no exceptions
+    const authError = new Error('Unauthorized: Authentication required');
+    authError.statusCode = 401;
+    throw authError;
   }
+  
   return userId;
 };
 
