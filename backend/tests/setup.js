@@ -8,12 +8,29 @@ const originalLog = console.log;
 
 // Filter out handler error logs (expected during error testing)
 console.error = (...args) => {
-  const errorString = args[0]?.toString() || '';
-  // Suppress handler error logs, but show actual test failures
-  if (errorString.includes('Error in') && errorString.includes('handler:')) {
-    return; // Suppress handler error logs
+  // Safely convert args to string to avoid circular reference issues
+  try {
+    const errorString = args[0]?.toString() || '';
+    // Suppress handler error logs, but show actual test failures
+    if (errorString.includes('Error in') && errorString.includes('handler:')) {
+      return; // Suppress handler error logs
+    }
+    // For other errors, safely stringify to avoid circular references
+    const safeArgs = args.map(arg => {
+      if (arg && typeof arg === 'object') {
+        try {
+          return JSON.stringify(arg, null, 2);
+        } catch (e) {
+          return String(arg);
+        }
+      }
+      return arg;
+    });
+    originalError(...safeArgs);
+  } catch (e) {
+    // If anything fails, just skip logging to avoid breaking tests
+    return;
   }
-  originalError(...args);
 };
 
 // Suppress all console.log (debug/info messages from handlers)

@@ -35,14 +35,12 @@ exports.handler = async (event) => {
     console.error('Error in login handler:', err);
     
     // Handle Cognito-specific errors
-    if (err.name === 'NotAuthorizedException') {
+    // For security, return the same generic message for both invalid credentials and user not found
+    if (err.name === 'NotAuthorizedException' || err.name === 'UserNotFoundException') {
       return badRequest('Incorrect email or password');
     }
     if (err.name === 'UserNotConfirmedException') {
       return badRequest('User is not confirmed. Please check your email for confirmation code.');
-    }
-    if (err.name === 'UserNotFoundException') {
-      return badRequest('User not found');
     }
 
     return error('Internal server error', 500);

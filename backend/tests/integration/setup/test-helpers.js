@@ -30,7 +30,11 @@ const createTestUser = async (email, password, name) => {
       refreshToken: loginResponse.data.refreshToken,
     };
   } catch (error) {
-    console.error('Error creating test user:', error.response?.data || error.message);
+    // Safely log error without circular references
+    const errorMessage = error.response?.data 
+      ? JSON.stringify(error.response.data)
+      : error.message || 'Unknown error';
+    console.error('Error creating test user:', errorMessage);
     throw error;
   }
 };

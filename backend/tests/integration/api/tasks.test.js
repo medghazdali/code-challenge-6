@@ -3,30 +3,11 @@ const { createTestUser, createAuthenticatedClient, cleanupTestData, API_URL } = 
 
 const TEST_API_URL = process.env.TEST_API_URL || API_URL;
 
-// Check if API is available
-let apiAvailable = false;
-
-beforeAll(async () => {
-  try {
-    await axios.post(`${TEST_API_URL}/auth/signup`, {
-      email: 'test-connection-check@example.com',
-      password: 'TestPassword123!',
-      name: 'Test',
-    }, { timeout: 2000, validateStatus: () => true });
-    apiAvailable = true;
-  } catch (error) {
-    if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
-      apiAvailable = false;
-    } else {
-      apiAvailable = true;
-    }
-  }
-});
-
 // Integration tests require a running server
-// Start the server with: npm run dev
-// Or set TEST_API_URL environment variable: TEST_API_URL=http://localhost:3000 npm run test:integration
-(apiAvailable ? describe : describe.skip)('Tasks Integration Tests', () => {
+// Set RUN_INTEGRATION_TESTS=true to enable: RUN_INTEGRATION_TESTS=true npm run test:integration
+const RUN_TESTS = process.env.RUN_INTEGRATION_TESTS === 'true';
+
+(RUN_TESTS ? describe : describe.skip)('Tasks Integration Tests', () => {
   let client;
   let accessToken;
   let projectId;
@@ -53,9 +34,21 @@ beforeAll(async () => {
 
   afterAll(async () => {
     if (client && projectIds.length > 0) {
-      await cleanupTestData(client, projectIds);
+      try {
+        // Cleanup with timeout - don't fail tests if cleanup is slow
+        await Promise.race([
+          cleanupTestData(client, projectIds),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Cleanup timeout')), 10000))
+        ]).catch(() => {
+          // Ignore cleanup errors/timeouts
+          console.warn('Cleanup timed out or failed, continuing...');
+        });
+      } catch (error) {
+        // Ignore cleanup errors
+        console.warn('Cleanup error:', error.message);
+      }
     }
-  });
+  }, 15000); // 15 second timeout for afterAll
 
   describe('Create Task', () => {
     it('should create a task successfully', async () => {
@@ -92,6 +85,7 @@ beforeAll(async () => {
       for (let i = 0; i < 3; i++) {
         const response = await client.post(`/projects/${projectId}/tasks`, {
           title: `List Test Task ${i}`,
+          description: `Description for task ${i}`,
           status: 'pending',
         });
         taskIds.push(response.data.id);
@@ -113,6 +107,7 @@ beforeAll(async () => {
     beforeAll(async () => {
       const response = await client.post(`/projects/${projectId}/tasks`, {
         title: 'Update Test Task',
+        description: 'Description for update test',
         status: 'pending',
       });
       taskId = response.data.id;
@@ -137,6 +132,7 @@ beforeAll(async () => {
     beforeAll(async () => {
       const response = await client.post(`/projects/${projectId}/tasks`, {
         title: 'Delete Test Task',
+        description: 'Description for delete test',
         status: 'pending',
       });
       taskId = response.data.id;

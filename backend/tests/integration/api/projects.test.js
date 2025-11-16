@@ -4,26 +4,10 @@ const { createTestUser, createAuthenticatedClient, cleanupTestData, API_URL } = 
 const TEST_API_URL = process.env.TEST_API_URL || API_URL;
 
 // Integration tests require a running server
-// Start the server with: npm run dev
-// Or set TEST_API_URL environment variable: TEST_API_URL=http://localhost:3000 npm run test:integration
-// 
-// Note: Tests will be skipped if API is not available (connection refused/timeout)
-describe('Projects Integration Tests', () => {
-  // Check API availability before running tests
-  beforeAll(async () => {
-    try {
-      await axios.post(`${TEST_API_URL}/auth/signup`, {
-        email: 'test-connection-check@example.com',
-        password: 'TestPassword123!',
-        name: 'Test',
-      }, { timeout: 2000, validateStatus: () => true });
-    } catch (error) {
-      if (error.code === 'ECONNREFUSED' || error.code === 'ETIMEDOUT') {
-        // Skip all tests if API is not available
-        return;
-      }
-    }
-  });
+// Set RUN_INTEGRATION_TESTS=true to enable: RUN_INTEGRATION_TESTS=true npm run test:integration
+const RUN_TESTS = process.env.RUN_INTEGRATION_TESTS === 'true';
+
+(RUN_TESTS ? describe : describe.skip)('Projects Integration Tests', () => {
   let client;
   let accessToken;
   let projectIds = [];
@@ -40,9 +24,21 @@ describe('Projects Integration Tests', () => {
 
   afterAll(async () => {
     if (client && projectIds.length > 0) {
-      await cleanupTestData(client, projectIds);
+      try {
+        // Cleanup with timeout - don't fail tests if cleanup is slow
+        await Promise.race([
+          cleanupTestData(client, projectIds),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Cleanup timeout')), 10000))
+        ]).catch(() => {
+          // Ignore cleanup errors/timeouts
+          console.warn('Cleanup timed out or failed, continuing...');
+        });
+      } catch (error) {
+        // Ignore cleanup errors
+        console.warn('Cleanup error:', error.message);
+      }
     }
-  });
+  }, 15000); // 15 second timeout for afterAll
 
   describe('Create Project', () => {
     it('should create a project successfully', async () => {
@@ -104,7 +100,9 @@ describe('Projects Integration Tests', () => {
 
     it('should return 404 for non-existent project', async () => {
       try {
-        await client.get('/projects/non-existent-id');
+        // Use a valid UUID format for a non-existent project
+        const fakeProjectId = '550e8400-e29b-41d4-a716-446655440000';
+        await client.get(`/projects/${fakeProjectId}`);
         fail('Should have thrown an error');
       } catch (error) {
         expect(error.response.status).toBe(404);
@@ -157,7 +155,9 @@ describe('Projects Integration Tests', () => {
 
     it('should return 404 when updating non-existent project', async () => {
       try {
-        await client.put('/projects/non-existent-id', {
+        // Use a valid UUID format for a non-existent project
+        const fakeProjectId = '550e8400-e29b-41d4-a716-446655440000';
+        await client.put(`/projects/${fakeProjectId}`, {
           name: 'Updated Name',
         });
         fail('Should have thrown an error');
