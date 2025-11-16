@@ -10,21 +10,34 @@ const originalLog = console.log;
 console.error = (...args) => {
   // Safely convert args to string to avoid circular reference issues
   try {
-    const errorString = args[0]?.toString() || '';
+    const errorString = String(args[0] || '');
     // Suppress handler error logs, but show actual test failures
     if (errorString.includes('Error in') && errorString.includes('handler:')) {
       return; // Suppress handler error logs
     }
     // For other errors, safely stringify to avoid circular references
     const safeArgs = args.map(arg => {
-      if (arg && typeof arg === 'object') {
+      if (arg === null || arg === undefined) {
+        return String(arg);
+      }
+      if (typeof arg === 'object') {
         try {
-          return JSON.stringify(arg, null, 2);
+          // Use a replacer function to handle circular references
+          const seen = new WeakSet();
+          return JSON.stringify(arg, (key, val) => {
+            if (val != null && typeof val === 'object') {
+              if (seen.has(val)) {
+                return '[Circular]';
+              }
+              seen.add(val);
+            }
+            return val;
+          }, 2);
         } catch (e) {
-          return String(arg);
+          return '[Object - cannot stringify]';
         }
       }
-      return arg;
+      return String(arg);
     });
     originalError(...safeArgs);
   } catch (e) {

@@ -31,11 +31,23 @@ const createTestUser = async (email, password, name) => {
     };
   } catch (error) {
     // Safely log error without circular references
-    const errorMessage = error.response?.data 
-      ? JSON.stringify(error.response.data)
-      : error.message || 'Unknown error';
+    let errorMessage = 'Unknown error';
+    try {
+      if (error.response?.data) {
+        errorMessage = JSON.stringify(error.response.data);
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+    } catch (e) {
+      // If stringification fails, use a simple message
+      errorMessage = 'Error creating test user (details unavailable)';
+    }
     console.error('Error creating test user:', errorMessage);
-    throw error;
+    // Re-throw with a simpler error to avoid circular references
+    const simpleError = new Error(errorMessage);
+    simpleError.status = error.response?.status;
+    simpleError.response = { data: error.response?.data, status: error.response?.status };
+    throw simpleError;
   }
 };
 

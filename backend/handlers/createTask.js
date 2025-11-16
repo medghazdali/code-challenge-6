@@ -45,8 +45,8 @@ exports.handler = async (event) => {
       return badRequest('Title is required and must be a non-empty string');
     }
 
-    if (!description || typeof description !== 'string' || description.trim().length === 0) {
-      return badRequest('Description is required and must be a non-empty string');
+    if (description !== undefined && typeof description !== 'string') {
+      return badRequest('Description must be a string');
     }
 
     if (status && !['pending', 'in-progress', 'completed'].includes(status)) {
@@ -63,7 +63,7 @@ exports.handler = async (event) => {
       projectId: projectId,
       userId: userId,
       title: title.trim(),
-      description: description.trim(),
+      description: description ? description.trim() : '',
       status: status || 'pending',
       createdAt: now,
       updatedAt: now,

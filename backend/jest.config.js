@@ -14,5 +14,6 @@ module.exports = {
   verbose: true,
   testTimeout: 30000, // 30 seconds for integration tests (they make real API calls)
   setupFilesAfterEnv: ['<rootDir>/tests/setup.js'],
+  maxWorkers: process.env.RUN_INTEGRATION_TESTS ? 1 : '50%', // Run integration tests sequentially
 };
 
