@@ -14,8 +14,12 @@
     "deploy:dev": "node scripts/deploy.js --stage dev",
     "deploy:prod": "node scripts/deploy.js --stage prod",
     "test": "jest",
+    "test:unit": "jest tests/unit",
     "test:watch": "jest --watch",
-    "test:coverage": "jest --coverage"
+    "test:coverage": "jest --coverage",
+    "test:integration": "jest tests/integration --testPathIgnorePatterns=/node_modules/",
+    "test:load": "artillery run tests/load/artillery.yml",
+    "test:all": "npm run test:unit && npm run test:integration"
   },
   "keywords": [
     "serverless",
@@ -33,10 +37,13 @@
     "uuid": "^9.0.1"
   },
   "devDependencies": {
+    "artillery": "^2.0.0",
+    "aws-sdk-client-mock": "^3.0.0",
     "jest": "^29.7.0",
     "serverless": "^3.38.0",
     "serverless-offline": "^13.3.3",
-    "serverless-aws-documentation": "^1.1.0"
+    "serverless-aws-documentation": "^1.1.0",
+    "supertest": "^6.3.3"
   }
 }
 
