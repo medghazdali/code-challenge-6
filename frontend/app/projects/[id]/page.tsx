@@ -13,6 +13,7 @@ import LoadingSpinner from '@/components/ui/LoadingSpinner';
 import ConfirmModal from '@/components/ui/ConfirmModal';
 import TaskForm from '@/components/tasks/TaskForm';
 import KanbanBoard from '@/components/tasks/KanbanBoard';
+import TaskFilter, { TaskFilterStatus } from '@/components/tasks/TaskFilter';
 import { useToastContext } from '@/components/ToastProvider';
 
 export default function ProjectDetailPage() {
@@ -27,6 +28,7 @@ export default function ProjectDetailPage() {
   const [deletingTask, setDeletingTask] = useState<Task | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [filterStatus, setFilterStatus] = useState<TaskFilterStatus>('all');
   const [taskFormData, setTaskFormData] = useState<TaskFormData>({
     title: '',
     description: '',
@@ -110,6 +112,19 @@ export default function ProjectDetailPage() {
     setShowEditModal(true);
   };
 
+  // Filter tasks based on selected status
+  const filteredTasks = filterStatus === 'all' 
+    ? tasks 
+    : tasks.filter(task => task.status === filterStatus);
+
+  // Calculate task counts for filter
+  const taskCounts = {
+    all: tasks.length,
+    pending: tasks.filter(t => t.status === 'pending').length,
+    inProgress: tasks.filter(t => t.status === 'in-progress').length,
+    completed: tasks.filter(t => t.status === 'completed').length,
+  };
+
   return (
     <ProtectedRoute>
       <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800">
@@ -140,18 +155,31 @@ export default function ProjectDetailPage() {
             </div>
           )}
 
-          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-            <div>
-              <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Tasks</h2>
-              <p className="text-slate-600 dark:text-slate-400 mt-1">Manage tasks for this project</p>
+          <div className="mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-4">
+              <div>
+                <h2 className="text-3xl font-bold text-slate-900 dark:text-white">Tasks</h2>
+                <p className="text-slate-600 dark:text-slate-400 mt-1">Manage tasks for this project</p>
+              </div>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg text-sm font-semibold transition-all shadow-lg hover:shadow-xl flex items-center space-x-2"
+              >
+                <span>+</span>
+                <span>New Task</span>
+              </button>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-6 py-3 rounded-lg text-sm font-semibold transition-all shadow-lg hover:shadow-xl flex items-center space-x-2"
-            >
-              <span>+</span>
-              <span>New Task</span>
-            </button>
+            
+            {/* Task Filter */}
+            {tasks.length > 0 && (
+              <div className="mb-4">
+                <TaskFilter
+                  selectedStatus={filterStatus}
+                  onStatusChange={setFilterStatus}
+                  taskCounts={taskCounts}
+                />
+              </div>
+            )}
           </div>
 
           <ErrorAlert error={error} />
@@ -170,8 +198,16 @@ export default function ProjectDetailPage() {
                 Create Task
               </button>
             </div>
+          ) : filteredTasks.length === 0 ? (
+            <div className="text-center py-20 bg-white dark:bg-slate-800 rounded-xl shadow-sm border-2 border-dashed border-slate-300 dark:border-slate-700">
+              <div className="text-6xl mb-4">🔍</div>
+              <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">No tasks found</h3>
+              <p className="text-slate-600 dark:text-slate-400 mb-6">
+                No tasks match the selected filter. Try a different status.
+              </p>
+            </div>
           ) : (
-            <KanbanBoard tasks={tasks} onEdit={openEditModal} onDelete={handleDeleteClick} />
+            <KanbanBoard tasks={filteredTasks} onEdit={openEditModal} onDelete={handleDeleteClick} />
           )}
 
           <Modal
