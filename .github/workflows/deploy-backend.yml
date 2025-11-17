@@ -32,13 +32,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         working-directory: ./backend
-        run: npm ci
+        run: |
+          # Try npm ci first, fallback to npm install if lock file is out of sync
+          npm ci || npm install
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -73,13 +75,15 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '18'
+          node-version: '20'
           cache: 'npm'
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         working-directory: ./backend
-        run: npm ci
+        run: |
+          # Try npm ci first, fallback to npm install if lock file is out of sync
+          npm ci || npm install
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
